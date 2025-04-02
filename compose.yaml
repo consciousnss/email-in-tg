@@ -1,0 +1,7 @@
+services:
+  app:
+    image: "ghcr.io/un1uckyyy/email-in-tg:dev"
+    environment:
+      IMAP_SERVER: $IMAP_SERVER
+      IMAP_USERNAME: $IMAP_USERNAME
+      IMAP_PASSWORD: $IMAP_PASSWORD

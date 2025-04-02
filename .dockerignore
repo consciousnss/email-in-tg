@@ -1,0 +1,5 @@
+.dockerignore
+
+.env
+compose.yaml
+docker-bake.hcl
