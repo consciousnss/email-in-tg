@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"github.com/emersion/go-imap/v2/imapclient"
-	"github.com/un1uckyyy/email-in-tg/internal/config"
 	"log"
+
+	"github.com/un1uckyyy/email-in-tg/internal/tg"
+
+	"github.com/un1uckyyy/email-in-tg/internal/config"
+	"github.com/un1uckyyy/email-in-tg/internal/imap"
 )
 
 func main() {
@@ -13,15 +15,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client, err := imapclient.DialTLS(cfg.ImapServer, nil)
+	is, err := imap.NewImapService(cfg.ImapServer, cfg.Username, cfg.Password)
 	if err != nil {
-		log.Fatal("Dial TLS error:", err)
+		log.Fatal(err)
 	}
 
-	err = client.Login(cfg.Username, cfg.Password).Wait()
+	ts, err := tg.NewTelegramService(cfg.TelegramToken, is)
 	if err != nil {
-		log.Fatal("Login error:", err)
+		log.Fatal(err)
 	}
+	ts.Start()
 
-	fmt.Println("Logged in")
+	log.Println("app started...")
+	select {}
 }

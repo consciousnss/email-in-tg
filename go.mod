@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/emersion/go-imap/v2 v2.0.0-beta.5
 	github.com/go-playground/validator/v10 v10.26.0
+	gopkg.in/telebot.v4 v4.0.0-beta.4
 )
 
 require (
