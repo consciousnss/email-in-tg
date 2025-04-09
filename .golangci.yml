@@ -1,0 +1,56 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - durationcheck
+    - errcheck
+    - goconst
+    - gocritic
+    - gomodguard
+    - govet
+    - ineffassign
+    - lll
+    - mnd
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+  settings:
+    mnd:
+      ignored-numbers:
+        - '2'
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
+    staticcheck:
+      checks:
+        - -SA1008
+        - -SA1019
+        - -SA4000
+        - -SA9004
+        - -ST1000
+        - -ST1005
+        - -ST1016
+        - -U1000
+        - all
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
