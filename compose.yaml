@@ -1,8 +1,36 @@
 services:
+  mongo:
+    image: mongo
+    volumes:
+      - mongo-volume:/data/db:rw
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: 1234
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: user
+      ME_CONFIG_BASICAUTH_PASSWORD: 1234
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 1234
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+    depends_on:
+      - mongo
+
   app:
     image: "ghcr.io/un1uckyyy/email-in-tg:dev"
     environment:
       IMAP_SERVER: $IMAP_SERVER
-      IMAP_USERNAME: $IMAP_USERNAME
-      IMAP_PASSWORD: $IMAP_PASSWORD
       TELEGRAM_TOKEN: $TELEGRAM_TOKEN
+      MONGO_URI: mongodb://admin:1234@mongo:27017
+      LOG_LEVEL: DEBUG
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-volume:
