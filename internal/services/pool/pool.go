@@ -28,23 +28,26 @@ func NewPool() *Pool {
 	}
 }
 
-func (p *Pool) Start(_ context.Context) error {
+func (p *Pool) Start(ctx context.Context) error {
 	logger.Debug("starting pool loop...")
-	go p.run()
+	go p.run(ctx)
 	return nil
 }
 
-func (p *Pool) run() {
+func (p *Pool) run(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case email := <-p.Updates:
 			msg := fmt.Sprintf("got email update: %+v", email)
 			logger.Debug(msg)
+			// TODO add search for subscribers
 		case group := <-p.Register:
 			msg := fmt.Sprintf("starting group register: %+v", group)
 			logger.Debug(msg)
 
-			is, err := imap.NewImapService(mailRuImap)
+			is, err := imap.NewImapService(mailRuImap, p.Updates)
 			if err != nil {
 				logger.Error(err.Error())
 				continue
@@ -59,10 +62,17 @@ func (p *Pool) run() {
 				logger.Error(err.Error())
 				continue
 			}
+
+			err = is.Start(ctx)
+			if err != nil {
+				msg := fmt.Sprintf("failed to start imap service: %v", err)
+				logger.Error(msg)
+				continue
+			}
+
 			p.Clients[group.ID] = is
 			msg = fmt.Sprintf("succesful register group: %+v", group)
 			logger.Debug(msg)
-
 		case group := <-p.Unregister:
 			err := p.Clients[group.ID].Logout()
 			if err != nil {

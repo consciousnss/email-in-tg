@@ -43,16 +43,7 @@ func NewTelegramService(
 	}, nil
 }
 
-func (t *TelegramService) registerButtons() {
-	t.bot.Handle("/start", t.start)
-	t.bot.Handle("/login", t.login)
-	t.bot.Handle("/subscribe", t.subscribe)
-	t.bot.Handle("/fetch", t.fetch)
-}
-
 func (t *TelegramService) Start(ctx context.Context) error {
-	t.registerButtons()
-
 	groups, err := t.repo.GetAllActiveGroups(ctx)
 	if err != nil {
 		return err
@@ -64,15 +55,24 @@ func (t *TelegramService) Start(ctx context.Context) error {
 	for _, group := range groups {
 		t.pool.Register <- group
 	}
-
 	msg = fmt.Sprintf("register all %v groups", len(groups))
 	logger.Debug(msg)
 
-	go func() {
-		t.bot.Start()
-	}()
-
+	logger.Debug("starting tg bot...")
+	go t.run()
 	return nil
+}
+
+func (t *TelegramService) run() {
+	t.registerButtons()
+	t.bot.Start()
+}
+
+func (t *TelegramService) registerButtons() {
+	t.bot.Handle("/start", t.start)
+	t.bot.Handle("/login", t.login)
+	t.bot.Handle("/subscribe", t.subscribe)
+	t.bot.Handle("/fetch", t.fetch)
 }
 
 func (t *TelegramService) Stop() {

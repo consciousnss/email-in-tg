@@ -163,7 +163,7 @@ func (t *TelegramService) fetch(c tele.Context) error {
 		return c.Send("Что-то пошло не так")
 	}
 
-	email, err := ic.FetchOne(uint32(nu), false)
+	email, err := ic.FetchOne(uint32(nu), true)
 	if err != nil {
 		logger.Error("fetch error: " + err.Error())
 		return c.Send("Что-то пошло не так")
