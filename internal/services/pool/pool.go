@@ -40,7 +40,7 @@ func (p *Pool) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case group := <-p.Register:
-			msg := fmt.Sprintf("starting group register: %+v", group)
+			msg := fmt.Sprintf("starting group register: %v", group.ID)
 			logger.Debug(msg)
 
 			is, err := imap.NewImapService(mailRuImap, group.ID, p.Updates)
@@ -67,7 +67,7 @@ func (p *Pool) run(ctx context.Context) {
 			}
 
 			p.Clients[group.ID] = is
-			msg = fmt.Sprintf("succesful register group: %+v", group)
+			msg = fmt.Sprintf("succesful register group: %v", group.ID)
 			logger.Debug(msg)
 		case group := <-p.Unregister:
 			err := p.Clients[group.ID].Logout()
