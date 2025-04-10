@@ -1,7 +1,7 @@
 package tg
 
 import (
-	"bytes"
+	"strings"
 	"text/template"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -21,17 +21,12 @@ func cleanTelegramHTML(input string) string {
 	return html
 }
 
-func renderEmailTemplate(email *models.Email) (string, error) {
-	tmpl, err := template.New("email").Parse(emailTemplate)
-	if err != nil {
+var emailTmpl = template.Must(template.New("email").Parse(emailTemplate))
+
+func renderEmailTemplateHTML(email *models.Email) (string, error) {
+	var builder strings.Builder
+	if err := emailTmpl.Execute(&builder, email); err != nil {
 		return "", err
 	}
-
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, email)
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
+	return builder.String(), nil
 }

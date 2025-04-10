@@ -116,7 +116,7 @@ func (t *TelegramService) Send(groupID int64, threadID int, email *models.Email)
 
 	group := &tele.User{ID: groupID}
 	email.Text = cleanTelegramHTML(email.Text)
-	text, err := renderEmailTemplate(email)
+	text, err := renderEmailTemplateHTML(email)
 	if err != nil {
 		msg := fmt.Sprintf("failed to render template: %v", err)
 		logger.Error(msg)
