@@ -59,6 +59,8 @@ func (t *TelegramService) start(c tele.Context) error {
 		return c.Send("Что-то пошло не так")
 	}
 
+	t.pool.Register <- &group
+
 	return c.Send("Отлично!\n" +
 		"Теперь, чтобы добавить почту отправь /subscribe в нужную тему",
 	)
