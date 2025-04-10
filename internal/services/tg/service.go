@@ -89,7 +89,7 @@ func (t *TelegramService) run(ctx context.Context) {
 			msg := fmt.Sprintf("found subscription: %+v", sub)
 			logger.Debug(msg)
 
-			err = t.Send(sub.GroupID, sub.ThreadID, update.Email)
+			err = t.Send(ctx, sub.GroupID, sub.ThreadID, update.Email)
 			if err != nil {
 				msg := fmt.Sprintf("failed to send email: %v", err)
 				logger.Error(msg)
@@ -100,23 +100,26 @@ func (t *TelegramService) run(ctx context.Context) {
 }
 
 func (t *TelegramService) registerButtons() {
+	t.bot.Handle("/help", t.help)
 	t.bot.Handle("/start", t.start)
+	t.bot.Handle("/stop", t.stop)
 	t.bot.Handle("/login", t.login)
 	t.bot.Handle("/subscribe", t.subscribe)
-	t.bot.Handle("/fetch", t.fetch)
 	t.bot.Handle("/subscribe_others", t.subscribeOthers)
+	t.bot.Handle("/subscriptions", t.subscriptions)
+	t.bot.Handle(tele.OnText, t.help)
 }
 
 func (t *TelegramService) Stop() {
 	t.bot.Stop()
 }
 
-func (t *TelegramService) Send(groupID int64, threadID int, email *models.Email) error {
+func (t *TelegramService) Send(_ context.Context, groupID int64, threadID int, email *models.Email) error {
 	logger.Debug(fmt.Sprintf("readers len: %v", len(email.Files)))
 
 	group := &tele.User{ID: groupID}
 	email.Text = cleanTelegramHTML(email.Text)
-	text, err := renderEmailTemplateHTML(email)
+	text, err := renderHTMLTemplate(emailTmpl, email)
 	if err != nil {
 		msg := fmt.Sprintf("failed to render template: %v", err)
 		logger.Error(msg)

@@ -3,7 +3,7 @@ package tg
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"os"
 
 	"github.com/un1uckyyy/email-in-tg/internal/models"
 
@@ -13,6 +13,24 @@ import (
 
 var validate = validator.New()
 
+func (t *TelegramService) help(c tele.Context) error {
+	text, err := renderHTMLTemplate(helpTmpl, os.Getenv("TELEGRAM_SUPPORT"))
+	if err != nil {
+		msg := fmt.Sprintf("failed to render template: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
+
+	err = c.Send(text, tele.ModeHTML)
+	if err != nil {
+		msg := fmt.Sprintf("failed to send message: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
+
+	return nil
+}
+
 func (t *TelegramService) start(c tele.Context) error {
 	ctx := context.Background()
 
@@ -21,6 +39,8 @@ func (t *TelegramService) start(c tele.Context) error {
 			"Важно, чтобы в ней были темы, тогда я смогу отправлять определенные письма в разные темы",
 		)
 	}
+
+	// TODO add check that group already registered
 
 	args := c.Args()
 	if len(args) != 2 {
@@ -64,6 +84,10 @@ func (t *TelegramService) start(c tele.Context) error {
 	return c.Send("Отлично!\n" +
 		"Теперь, чтобы добавить почту отправь /subscribe в нужную тему",
 	)
+}
+
+func (t *TelegramService) stop(c tele.Context) error {
+	return nil
 }
 
 func (t *TelegramService) login(c tele.Context) error {
@@ -167,44 +191,6 @@ func (t *TelegramService) subscribeOthers(c tele.Context) error {
 	)
 }
 
-func (t *TelegramService) fetch(c tele.Context) error {
-	args := c.Args()
-	if len(args) != 1 {
-		return c.Send("Отправь команду /fetch в следующем формате:\n" +
-			"/fetch 'number'",
-		)
-	}
-
-	number := args[0]
-
-	nu, err := strconv.ParseUint(number, 10, 32)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-
-	ic, ok := t.pool.Clients[c.Chat().ID]
-	if !ok {
-		logger.Error("cant get imap client from pool")
-		return nil
-	}
-
-	err = ic.Select("INBOX")
-	if err != nil {
-		logger.Error(err.Error())
-		return c.Send("Что-то пошло не так")
-	}
-
-	email, err := ic.FetchOne(uint32(nu), true)
-	if err != nil {
-		logger.Error("fetch error: " + err.Error())
-		return c.Send("Что-то пошло не так")
-	}
-
-	logger.Debug(fmt.Sprintf("groupId: %v, threadId: %v", c.Chat().ID, c.Message().ThreadID))
-	err = t.Send(c.Chat().ID, c.Message().ThreadID, email)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-
-	return c.Send("executed")
+func (t *TelegramService) subscriptions(c tele.Context) error {
+	return nil
 }

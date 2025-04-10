@@ -18,7 +18,7 @@ type ImapService interface {
 	Login(username string, password string) error
 	Logout() error
 	Select(mailbox string) error
-	FetchOne(num uint32, uid bool) (*models.Email, error)
+	FetchOne(uid imap.UID) (*models.Email, error)
 	Start(ctx context.Context) error
 }
 
@@ -34,7 +34,7 @@ var _ ImapService = (*ImapServiceImpl)(nil)
 var defaultTickerTimeout = 5 * time.Second
 
 func init() {
-	poolTimeoutStr := os.Getenv("POOL_TIMEOUT")
+	poolTimeoutStr := os.Getenv("IMAP_POOL_TIMEOUT")
 	poolTimeout, err := time.ParseDuration(poolTimeoutStr)
 	if err != nil {
 		return
@@ -51,11 +51,7 @@ func NewImapService(
 	id int64,
 	updates chan *models.Update,
 ) (ImapService, error) {
-	client, err := imapclient.DialTLS(imapServer,
-		&imapclient.Options{
-			// DebugWriter: os.Stderr,
-		},
-	)
+	client, err := imapclient.DialTLS(imapServer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}
@@ -112,7 +108,7 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 				break
 			}
 
-			email, err := i.FetchOne(uint32(i.uidNext), true)
+			email, err := i.FetchOne(i.uidNext)
 			if err != nil {
 				msg := fmt.Sprintf("fetch uid %d error: %s", i.uidNext, err)
 				logger.Error(msg)
@@ -160,15 +156,10 @@ func (i *ImapServiceImpl) Status() (imap.UID, error) {
 	return data.UIDNext, nil
 }
 
-func (i *ImapServiceImpl) FetchOne(num uint32, uid bool) (*models.Email, error) {
+func (i *ImapServiceImpl) FetchOne(uid imap.UID) (*models.Email, error) {
 	email := &models.Email{}
 
-	var seqSet imap.NumSet
-	if uid {
-		seqSet = imap.UIDSetNum(imap.UID(num))
-	} else {
-		seqSet = imap.SeqSetNum(num)
-	}
+	seqSet := imap.UIDSetNum(uid)
 
 	bodySection := &imap.FetchItemBodySection{}
 	fetchOptions := &imap.FetchOptions{

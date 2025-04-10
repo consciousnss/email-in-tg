@@ -25,8 +25,9 @@ services:
   app:
     image: "ghcr.io/un1uckyyy/email-in-tg:dev"
     environment:
-      POOL_TIMEOUT: 10s
+      IMAP_POOL_TIMEOUT: 10s
       TELEGRAM_TOKEN: $TELEGRAM_TOKEN
+      TELEGRAM_SUPPORT: $TELEGRAM_SUPPORT
       MONGO_URI: mongodb://admin:1234@mongo:27017
       LOG_LEVEL: DEBUG
     depends_on:
