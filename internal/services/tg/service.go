@@ -2,6 +2,7 @@ package tg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -74,6 +75,11 @@ func (t *TelegramService) run(ctx context.Context) {
 			return
 		case update := <-t.pool.Updates:
 			sub, err := t.repo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
+			if errors.Is(err, repo.ErrSubscriptionNotFound) {
+				msg := fmt.Sprintf("subscription for email %v not found", update.Email.MailFrom)
+				logger.Error(msg)
+				break
+			}
 			if err != nil {
 				msg := fmt.Sprintf("failed to find subscription: %v", err)
 				logger.Error(msg)

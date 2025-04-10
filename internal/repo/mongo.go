@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 
 	"github.com/un1uckyyy/email-in-tg/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -144,6 +145,9 @@ func (r *Repo) FindSubscription(ctx context.Context, groupID int64, email string
 
 	var subscription models.Subscription
 	err := coll.FindOne(ctx, filter).Decode(&subscription)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, ErrSubscriptionNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
