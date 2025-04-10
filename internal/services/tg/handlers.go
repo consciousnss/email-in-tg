@@ -114,7 +114,7 @@ func (t *TelegramService) subscribe(c tele.Context) error {
 
 	email := args[0]
 	subscription := models.Subscription{
-		SenderEmail: email,
+		SenderEmail: &email,
 		GroupID:     c.Chat().ID,
 		ThreadID:    c.Message().ThreadID,
 	}
@@ -135,6 +135,35 @@ func (t *TelegramService) subscribe(c tele.Context) error {
 
 	return c.Send("Подписка на почту создана\n" +
 		"Письма от: " + email + " будут приходить в эту тему",
+	)
+}
+
+func (t *TelegramService) subscribeOthers(c tele.Context) error {
+	ctx := context.Background()
+
+	subscription := models.Subscription{
+		SenderEmail:  nil,
+		GroupID:      c.Chat().ID,
+		ThreadID:     c.Message().ThreadID,
+		OtherSenders: true,
+	}
+
+	err := validate.Struct(subscription)
+	if err != nil {
+		msg := fmt.Sprintf("subscription validation error: %v", err)
+		logger.Error(msg)
+		return c.Send("Что-то пошло не так")
+	}
+
+	err = t.repo.CreateSubscription(ctx, subscription)
+	if err != nil {
+		msg := fmt.Sprintf("subscription set error: %v", err)
+		logger.Error(msg)
+		return c.Send("Что-то пошло не так")
+	}
+
+	return c.Send("Подписка на почту создана\n" +
+		"Письма от всех незарегистрированных отправителей будут приходить в эту тему",
 	)
 }
 

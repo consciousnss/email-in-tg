@@ -2,17 +2,17 @@ package models
 
 import (
 	"io"
-	"time"
 )
 
 type Update struct {
 	GroupID int64
 	Email   *Email
 }
+
 type Email struct {
 	MailFrom string
 	MailTo   string
-	Date     time.Time
+	Date     string
 	Subject  string
 	Text     string
 	Files    []*File

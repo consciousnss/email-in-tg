@@ -105,10 +105,10 @@ func (r *Repo) CreateSubscription(ctx context.Context, subscription models.Subsc
 	return nil
 }
 
-func (r *Repo) GetAllSubscriptions(ctx context.Context, groupID int64, threadID int) ([]*models.Subscription, error) {
+func (r *Repo) GetAllSubscriptions(ctx context.Context, groupID int64) ([]*models.Subscription, error) {
 	coll := r.db.Collection(subscriptionsCollection)
 
-	filter := bson.M{"group_id": groupID, "thread_id": threadID}
+	filter := bson.M{"group_id": groupID}
 	cur, err := coll.Find(ctx, filter)
 	if err != nil {
 		return nil, err
@@ -146,8 +146,32 @@ func (r *Repo) FindSubscription(ctx context.Context, groupID int64, email string
 	var subscription models.Subscription
 	err := coll.FindOne(ctx, filter).Decode(&subscription)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, ErrSubscriptionNotFound
+		// trying to find subscription on other senders for that group
+		sub, err := r.FindOtherSubscription(ctx, groupID)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrSubscriptionNotFound
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		return sub, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &subscription, nil
+}
+
+// FindOtherSubscription return subscription on other senders for group or error
+func (r *Repo) FindOtherSubscription(ctx context.Context, groupID int64) (*models.Subscription, error) {
+	coll := r.db.Collection(subscriptionsCollection)
+
+	filter := bson.M{"group_id": groupID, "other_senders": true}
+
+	var subscription models.Subscription
+	err := coll.FindOne(ctx, filter).Decode(&subscription)
 	if err != nil {
 		return nil, err
 	}

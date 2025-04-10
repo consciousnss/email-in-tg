@@ -20,7 +20,10 @@ type EmailLogin struct {
 
 type Subscription struct {
 	ID          primitive.ObjectID `bson:"_id"`
-	SenderEmail string             `bson:"sender_email" validate:"required,email"`
+	SenderEmail *string            `bson:"sender_email" validate:"omitempty,required_if=OtherSenders true,email"`
 	GroupID     int64              `bson:"group_id" validate:"required"`
 	ThreadID    int                `bson:"thread_id"`
+
+	// if set to true, will be used if no SenderEmail matches found
+	OtherSenders bool `bson:"other_senders"`
 }

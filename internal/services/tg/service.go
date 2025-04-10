@@ -104,6 +104,7 @@ func (t *TelegramService) registerButtons() {
 	t.bot.Handle("/login", t.login)
 	t.bot.Handle("/subscribe", t.subscribe)
 	t.bot.Handle("/fetch", t.fetch)
+	t.bot.Handle("/subscribe_others", t.subscribeOthers)
 }
 
 func (t *TelegramService) Stop() {
@@ -114,7 +115,20 @@ func (t *TelegramService) Send(groupID int64, threadID int, email *models.Email)
 	logger.Debug(fmt.Sprintf("readers len: %v", len(email.Files)))
 
 	group := &tele.User{ID: groupID}
-	_, err := t.bot.Send(group, cleanTelegramHTML(email.Text), &tele.SendOptions{ThreadID: threadID}, tele.ModeHTML)
+	email.Text = cleanTelegramHTML(email.Text)
+	text, err := renderEmailTemplate(email)
+	if err != nil {
+		msg := fmt.Sprintf("failed to render template: %v", err)
+		logger.Error(msg)
+		return err
+	}
+
+	_, err = t.bot.Send(
+		group,
+		text,
+		&tele.SendOptions{ThreadID: threadID},
+		tele.ModeHTML,
+	)
 	if err != nil {
 		logger.Error(err.Error())
 	}

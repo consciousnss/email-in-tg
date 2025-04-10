@@ -83,6 +83,9 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 	}
 	i.uidNext = uidNext
 
+	msg := fmt.Sprintf("got UIDNext: %d", i.uidNext)
+	logger.Debug(msg)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -94,14 +97,12 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 				logger.Error(msg)
 				break
 			}
-			msg := fmt.Sprintf("got UIDNext: %d", uid)
-			logger.Debug(msg)
 
 			if uid == i.uidNext {
 				break
 			}
 
-			msg = fmt.Sprintf("UIDNext changed from: %d, to: %d", i.uidNext, uid)
+			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", i.uidNext, uid)
 			logger.Debug(msg)
 
 			err = i.Select(inbox)
