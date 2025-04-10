@@ -7,6 +7,7 @@ import (
 
 type Email struct {
 	MailFrom string
+	MailTo   string
 	Date     time.Time
 	Subject  string
 	Text     string

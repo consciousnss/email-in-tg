@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
@@ -15,19 +16,27 @@ import (
 type ImapService interface {
 	Login(username string, password string) error
 	Logout() error
-	ListBoxes() ([]string, error)
 	Select(mailbox string) error
 	FetchOne(num uint32, uid bool) (*models.Email, error)
+	Start(ctx context.Context) error
 }
 
 type ImapServiceImpl struct {
-	c *imapclient.Client
+	c       *imapclient.Client
+	updates chan *models.Email
 }
 
 var _ ImapService = (*ImapServiceImpl)(nil)
 
+const tickerTimeout = 5 * time.Second
+
+const (
+	inbox = "INBOX"
+)
+
 func NewImapService(
 	imapServer string,
+	updates chan *models.Email,
 ) (ImapService, error) {
 	client, err := imapclient.DialTLS(imapServer,
 		&imapclient.Options{
@@ -39,12 +48,57 @@ func NewImapService(
 	}
 
 	return &ImapServiceImpl{
-		c: client,
+		c:       client,
+		updates: updates,
 	}, nil
 }
 
-func (i *ImapServiceImpl) Start(_ context.Context) error {
+func (i *ImapServiceImpl) Start(ctx context.Context) error {
+	go i.run(ctx)
 	return nil
+}
+
+func (i *ImapServiceImpl) run(ctx context.Context) {
+	ticker := time.NewTicker(tickerTimeout)
+	defer ticker.Stop()
+
+	uidNextInitial, err := i.Status()
+	if err != nil {
+		msg := fmt.Sprintf("imap status error: %s", err)
+		logger.Error(msg)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			uid, err := i.Status()
+			if err != nil {
+				msg := fmt.Sprintf("imap status error: %s", err)
+				logger.Error(msg)
+				break
+			}
+			msg := fmt.Sprintf("got UIDNext: %d", uid)
+			logger.Debug(msg)
+
+			if uid == uidNextInitial {
+				break
+			}
+
+			msg = fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNextInitial, uid)
+			logger.Debug(msg)
+
+			email, err := i.FetchOne(uint32(uidNextInitial), true)
+			if err != nil {
+				msg := fmt.Sprintf("fetch one error: %s", err)
+				logger.Error(msg)
+				break
+			}
+			i.updates <- email
+			uidNextInitial = uid
+		}
+	}
 }
 
 func (i *ImapServiceImpl) Login(username string, password string) error {
@@ -63,33 +117,6 @@ func (i *ImapServiceImpl) Logout() error {
 	return nil
 }
 
-func (i *ImapServiceImpl) ListBoxes() ([]string, error) {
-	options := imap.ListOptions{
-		ReturnStatus: &imap.StatusOptions{
-			NumMessages: true,
-			NumUnseen:   true,
-		},
-	}
-
-	mailboxes, err := i.c.List("", "%", &options).Collect()
-	if err != nil {
-		return nil, fmt.Errorf("list mailboxes error: %w", err)
-	}
-
-	boxes := make([]string, 0, len(mailboxes))
-	for _, mailbox := range mailboxes {
-		msg := fmt.Sprintf(
-			"Mailbox %s contains %v messages (%v unseen)",
-			mailbox.Mailbox,
-			*mailbox.Status.NumMessages,
-			*mailbox.Status.NumUnseen,
-		)
-		boxes = append(boxes, msg)
-	}
-
-	return boxes, nil
-}
-
 func (i *ImapServiceImpl) Select(mailbox string) error {
 	_, err := i.c.Select(mailbox, nil).Wait()
 	if err != nil {
@@ -97,6 +124,14 @@ func (i *ImapServiceImpl) Select(mailbox string) error {
 	}
 
 	return nil
+}
+
+func (i *ImapServiceImpl) Status() (imap.UID, error) {
+	data, err := i.c.Status(inbox, &imap.StatusOptions{UIDNext: true}).Wait()
+	if err != nil {
+		return 0, fmt.Errorf("status error: %w", err)
+	}
+	return data.UIDNext, nil
 }
 
 func (i *ImapServiceImpl) FetchOne(num uint32, uid bool) (*models.Email, error) {
@@ -116,85 +151,65 @@ func (i *ImapServiceImpl) FetchOne(num uint32, uid bool) (*models.Email, error) 
 		},
 	}
 	fetchCmd := i.c.Fetch(seqSet, fetchOptions)
-	defer func() {
-		err := fetchCmd.Close()
-		if err != nil {
-			msg := fmt.Sprintf("fetch close err: %v", err)
-			logger.Error(msg)
-		}
-	}()
+	defer fetchCmd.Close()
+
+	msg := fetchCmd.Next()
+	if msg == nil {
+		return nil, fmt.Errorf("got nil fetch result")
+	}
 
 	for {
-		msg := fetchCmd.Next()
-		if msg == nil {
+		item := msg.Next()
+		if item == nil {
 			break
 		}
 
+		dataBodySection, ok := item.(imapclient.FetchItemDataBodySection)
+		if !ok {
+			continue
+		}
+
+		mr, err := mail.CreateReader(dataBodySection.Literal)
+		if err != nil {
+			return nil, fmt.Errorf("mail parse err: %w", err)
+		}
+
+		err = headerParse(mr.Header, email)
+		if err != nil {
+			return nil, fmt.Errorf("header parse err: %w", err)
+		}
+		logger.Debug(fmt.Sprintf("got %+v", email))
+
 		for {
-			item := msg.Next()
-			if item == nil {
+			p, err := mr.NextPart()
+			if err == io.EOF {
 				break
+			} else if err != nil {
+				return nil, fmt.Errorf("mail reader error: %w", err)
 			}
 
-			if item, ok := item.(imapclient.FetchItemDataBodySection); ok {
-				mr, err := mail.CreateReader(item.Literal)
+			switch h := p.Header.(type) {
+			case *mail.InlineHeader:
+				b, err := io.ReadAll(p.Body)
 				if err != nil {
-					return nil, fmt.Errorf("mail parse err: %w", err)
+					return nil, fmt.Errorf("read text error %w", err)
 				}
-
-				s, err := mr.Header.Subject()
+				email.Text = string(b)
+			case *mail.AttachmentHeader:
+				filename, err := h.Filename()
 				if err != nil {
-					return nil, fmt.Errorf("get subject error: %w", err)
+					return nil, fmt.Errorf("get filename error %w", err)
 				}
-				email.Subject = s
-				logger.Debug(fmt.Sprintf("got subject: %v", s))
 
-				d, err := mr.Header.Date()
+				b, err := io.ReadAll(p.Body)
 				if err != nil {
-					return nil, fmt.Errorf("get date error: %w", err)
+					return nil, fmt.Errorf("read attachment error: %w", err)
 				}
-				email.Date = d
-				logger.Debug(fmt.Sprintf("got date: %v", d))
 
-				alf, err := mr.Header.AddressList("From")
-				if err != nil {
-					return nil, fmt.Errorf("get address list error: %w", err)
-				}
-				email.MailFrom = alf[0].Address
-				logger.Debug(fmt.Sprintf("got address: %v", alf[0].Address))
-
-				for {
-					p, err := mr.NextPart()
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						return nil, fmt.Errorf("")
-					}
-
-					switch h := p.Header.(type) {
-					case *mail.InlineHeader:
-						b, err := io.ReadAll(p.Body)
-						if err != nil {
-							return nil, fmt.Errorf("read text error %w", err)
-						}
-						email.Text = string(b)
-					case *mail.AttachmentHeader:
-						filename, err := h.Filename()
-						if err != nil {
-							return nil, fmt.Errorf("get filename error %w", err)
-						}
-
-						b, err := io.ReadAll(p.Body)
-						if err != nil {
-							return nil, fmt.Errorf("read attachment error: %w", err)
-						}
-
-						email.Files = append(email.Files, &models.File{
-							Filename: filename,
-							Data:     bytes.NewReader(b),
-						})
-					}
-				}
+				email.Files = append(email.Files, &models.File{
+					Filename: filename,
+					Data:     bytes.NewReader(b),
+				})
 			}
 		}
 	}
