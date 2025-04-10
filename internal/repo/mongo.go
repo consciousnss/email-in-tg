@@ -77,7 +77,7 @@ func (r *Repo) SetEmailLogin(
 	return nil
 }
 
-func (r *Repo) SetGroupActivity(ctx context.Context, groupID int64, activity bool) error {
+func (r *Repo) SetGroupActivity(ctx context.Context, groupID int64, activity bool) (*models.Group, error) {
 	coll := r.db.Collection(groupCollection)
 	filter := bson.M{"_id": groupID}
 	update := bson.M{
@@ -86,11 +86,13 @@ func (r *Repo) SetGroupActivity(ctx context.Context, groupID int64, activity boo
 		},
 	}
 
-	_, err := coll.UpdateOne(ctx, filter, update)
+	var group models.Group
+	err := coll.FindOneAndUpdate(ctx, filter, update).Decode(&group)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return &group, nil
 }
 
 func (r *Repo) CreateSubscription(ctx context.Context, subscription models.Subscription) error {
