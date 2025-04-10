@@ -1,6 +1,6 @@
 services:
   mongo:
-    image: mongo
+    image: 'mongo:8.0.4'
     volumes:
       - mongo-volume:/data/db:rw
     environment:
@@ -23,7 +23,7 @@ services:
       - mongo
 
   app:
-    image: "ghcr.io/un1uckyyy/email-in-tg:dev"
+    image: 'ghcr.io/un1uckyyy/email-in-tg:dev'
     environment:
       IMAP_POOL_TIMEOUT: 10s
       TELEGRAM_TOKEN: $TELEGRAM_TOKEN
@@ -32,6 +32,16 @@ services:
       LOG_LEVEL: DEBUG
     depends_on:
       - mongo
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
+
+  watchtower:
+    image: containrrr/watchtower
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=false'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60
 
 volumes:
   mongo-volume:
