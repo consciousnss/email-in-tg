@@ -20,13 +20,15 @@ type ImapService interface {
 	Select(mailbox string) error
 	FetchOne(uid imap.UID) (*models.Email, error)
 	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
 }
 
 type ImapServiceImpl struct {
-	uidNext imap.UID
-	c       *imapclient.Client
-	updates chan *models.Update
 	ID      int64
+	c       *imapclient.Client
+	uidNext imap.UID
+	updates chan *models.Update
+	done    chan struct{}
 }
 
 var _ ImapService = (*ImapServiceImpl)(nil)
@@ -57,14 +59,24 @@ func NewImapService(
 	}
 
 	return &ImapServiceImpl{
-		c:       client,
 		ID:      id,
+		c:       client,
 		updates: updates,
+		done:    make(chan struct{}),
 	}, nil
 }
 
 func (i *ImapServiceImpl) Start(ctx context.Context) error {
 	go i.run(ctx)
+	return nil
+}
+
+func (i *ImapServiceImpl) Stop(_ context.Context) error {
+	err := i.Logout()
+	if err != nil {
+		return err
+	}
+	i.done <- struct{}{}
 	return nil
 }
 
@@ -85,6 +97,8 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-i.done:
 			return
 		case <-ticker.C:
 			uid, err := i.Status()

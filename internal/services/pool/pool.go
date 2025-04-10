@@ -70,7 +70,7 @@ func (p *Pool) run(ctx context.Context) {
 			msg = fmt.Sprintf("succesful register group: %v", group.ID)
 			logger.Debug(msg)
 		case group := <-p.Unregister:
-			err := p.Clients[group.ID].Logout()
+			err := p.Clients[group.ID].Stop(ctx)
 			if err != nil {
 				logger.Error(err.Error())
 			}
