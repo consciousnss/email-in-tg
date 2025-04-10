@@ -7,18 +7,15 @@ import (
 )
 
 type Config struct {
-	ImapServer    string `validate:"required"`
 	TelegramToken string `validate:"required"`
 	MongoURI      string `validate:"required"`
 }
 
 func LoadConfig() (*Config, error) {
-	imapServer := os.Getenv("IMAP_SERVER")
 	telegramToken := os.Getenv("TELEGRAM_TOKEN")
 	mongoURI := os.Getenv("MONGO_URI")
 
 	config := &Config{
-		ImapServer:    imapServer,
 		TelegramToken: telegramToken,
 		MongoURI:      mongoURI,
 	}

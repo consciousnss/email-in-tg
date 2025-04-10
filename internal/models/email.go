@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type Update struct {
+	GroupID int64
+	Email   *Email
+}
 type Email struct {
 	MailFrom string
 	MailTo   string

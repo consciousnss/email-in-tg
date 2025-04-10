@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	emailCollection         = "group" // TODO rename to group
+	groupCollection         = "group"
 	subscriptionsCollection = "subscriptions"
 )
 
@@ -25,7 +25,7 @@ func NewRepo(db *db.Mongo) *Repo {
 }
 
 func (r *Repo) CreateGroup(ctx context.Context, group models.Group) error {
-	coll := r.db.Collection(emailCollection)
+	coll := r.db.Collection(groupCollection)
 
 	_, err := coll.InsertOne(ctx, group)
 	if mongo.IsDuplicateKeyError(err) {
@@ -39,7 +39,7 @@ func (r *Repo) CreateGroup(ctx context.Context, group models.Group) error {
 }
 
 func (r *Repo) GetAllActiveGroups(ctx context.Context) ([]*models.Group, error) {
-	coll := r.db.Collection(emailCollection)
+	coll := r.db.Collection(groupCollection)
 
 	filter := bson.M{"is_active": true}
 	cur, err := coll.Find(ctx, filter)
@@ -60,7 +60,7 @@ func (r *Repo) SetEmailLogin(
 	groupID int64,
 	login models.EmailLogin,
 ) error {
-	coll := r.db.Collection(emailCollection)
+	coll := r.db.Collection(groupCollection)
 
 	filter := bson.M{"_id": groupID}
 	update := bson.M{
@@ -77,7 +77,7 @@ func (r *Repo) SetEmailLogin(
 }
 
 func (r *Repo) SetGroupActivity(ctx context.Context, groupID int64, activity bool) error {
-	coll := r.db.Collection(emailCollection)
+	coll := r.db.Collection(groupCollection)
 	filter := bson.M{"_id": groupID}
 	update := bson.M{
 		"$set": bson.M{
@@ -140,7 +140,7 @@ func (r *Repo) DeleteSubscription(ctx context.Context, id string) error {
 func (r *Repo) FindSubscription(ctx context.Context, groupID int64, email string) (*models.Subscription, error) {
 	coll := r.db.Collection(subscriptionsCollection)
 
-	filter := bson.M{"group_id": groupID, "email": email}
+	filter := bson.M{"group_id": groupID, "sender_email": email}
 
 	var subscription models.Subscription
 	err := coll.FindOne(ctx, filter).Decode(&subscription)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/emersion/go-imap/v2"
@@ -22,13 +23,24 @@ type ImapService interface {
 }
 
 type ImapServiceImpl struct {
+	uidNext imap.UID
 	c       *imapclient.Client
-	updates chan *models.Email
+	updates chan *models.Update
+	ID      int64
 }
 
 var _ ImapService = (*ImapServiceImpl)(nil)
 
-const tickerTimeout = 5 * time.Second
+var defaultTickerTimeout = 5 * time.Second
+
+func init() {
+	poolTimeoutStr := os.Getenv("POOL_TIMEOUT")
+	poolTimeout, err := time.ParseDuration(poolTimeoutStr)
+	if err != nil {
+		return
+	}
+	defaultTickerTimeout = poolTimeout
+}
 
 const (
 	inbox = "INBOX"
@@ -36,7 +48,8 @@ const (
 
 func NewImapService(
 	imapServer string,
-	updates chan *models.Email,
+	id int64,
+	updates chan *models.Update,
 ) (ImapService, error) {
 	client, err := imapclient.DialTLS(imapServer,
 		&imapclient.Options{
@@ -49,6 +62,7 @@ func NewImapService(
 
 	return &ImapServiceImpl{
 		c:       client,
+		ID:      id,
 		updates: updates,
 	}, nil
 }
@@ -59,14 +73,15 @@ func (i *ImapServiceImpl) Start(ctx context.Context) error {
 }
 
 func (i *ImapServiceImpl) run(ctx context.Context) {
-	ticker := time.NewTicker(tickerTimeout)
+	ticker := time.NewTicker(defaultTickerTimeout)
 	defer ticker.Stop()
 
-	uidNextInitial, err := i.Status()
+	uidNext, err := i.Status()
 	if err != nil {
 		msg := fmt.Sprintf("imap status error: %s", err)
 		logger.Error(msg)
 	}
+	i.uidNext = uidNext
 
 	for {
 		select {
@@ -82,21 +97,31 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 			msg := fmt.Sprintf("got UIDNext: %d", uid)
 			logger.Debug(msg)
 
-			if uid == uidNextInitial {
+			if uid == i.uidNext {
 				break
 			}
 
-			msg = fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNextInitial, uid)
+			msg = fmt.Sprintf("UIDNext changed from: %d, to: %d", i.uidNext, uid)
 			logger.Debug(msg)
 
-			email, err := i.FetchOne(uint32(uidNextInitial), true)
+			err = i.Select(inbox)
 			if err != nil {
-				msg := fmt.Sprintf("fetch one error: %s", err)
+				msg := fmt.Sprintf("imap select error: %s", err)
 				logger.Error(msg)
 				break
 			}
-			i.updates <- email
-			uidNextInitial = uid
+
+			email, err := i.FetchOne(uint32(i.uidNext), true)
+			if err != nil {
+				msg := fmt.Sprintf("fetch uid %d error: %s", i.uidNext, err)
+				logger.Error(msg)
+				break
+			}
+			i.updates <- &models.Update{
+				Email:   email,
+				GroupID: i.ID,
+			}
+			i.uidNext = uid
 		}
 	}
 }

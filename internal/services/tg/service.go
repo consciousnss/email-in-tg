@@ -58,14 +58,39 @@ func (t *TelegramService) Start(ctx context.Context) error {
 	msg = fmt.Sprintf("register all %v groups", len(groups))
 	logger.Debug(msg)
 
+	t.registerButtons()
+
+	go func() { t.bot.Start() }()
+
 	logger.Debug("starting tg bot...")
-	go t.run()
+	go t.run(ctx)
 	return nil
 }
 
-func (t *TelegramService) run() {
-	t.registerButtons()
-	t.bot.Start()
+func (t *TelegramService) run(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case update := <-t.pool.Updates:
+			sub, err := t.repo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
+			if err != nil {
+				msg := fmt.Sprintf("failed to find subscription: %v", err)
+				logger.Error(msg)
+				break
+			}
+
+			msg := fmt.Sprintf("found subscription: %+v", sub)
+			logger.Debug(msg)
+
+			err = t.Send(sub.GroupID, sub.ThreadID, update.Email)
+			if err != nil {
+				msg := fmt.Sprintf("failed to send email: %v", err)
+				logger.Error(msg)
+				break
+			}
+		}
+	}
 }
 
 func (t *TelegramService) registerButtons() {

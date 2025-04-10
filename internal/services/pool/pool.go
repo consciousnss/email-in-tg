@@ -14,7 +14,7 @@ const (
 
 type Pool struct {
 	Clients    map[int64]imap.ImapService
-	Updates    chan *models.Email
+	Updates    chan *models.Update
 	Register   chan *models.Group
 	Unregister chan *models.Group
 }
@@ -22,7 +22,7 @@ type Pool struct {
 func NewPool() *Pool {
 	return &Pool{
 		Clients:    make(map[int64]imap.ImapService),
-		Updates:    make(chan *models.Email),
+		Updates:    make(chan *models.Update),
 		Register:   make(chan *models.Group),
 		Unregister: make(chan *models.Group),
 	}
@@ -39,15 +39,11 @@ func (p *Pool) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case email := <-p.Updates:
-			msg := fmt.Sprintf("got email update: %+v", email)
-			logger.Debug(msg)
-			// TODO add search for subscribers
 		case group := <-p.Register:
 			msg := fmt.Sprintf("starting group register: %+v", group)
 			logger.Debug(msg)
 
-			is, err := imap.NewImapService(mailRuImap, p.Updates)
+			is, err := imap.NewImapService(mailRuImap, group.ID, p.Updates)
 			if err != nil {
 				logger.Error(err.Error())
 				continue
