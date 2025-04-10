@@ -1,0 +1,28 @@
+services:
+  mongo:
+    image: 'mongo:8.0.4'
+    volumes:
+      - ./data/mongo:/data/db:rw
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: $MONGO_USERNAME
+      MONGO_INITDB_ROOT_PASSWORD: $MONGO_PASSWORD
+
+  app:
+    image: 'ghcr.io/un1uckyyy/email-in-tg:latest'
+    environment:
+      IMAP_POOL_TIMEOUT: 10s
+      TELEGRAM_TOKEN: $TELEGRAM_TOKEN
+      TELEGRAM_SUPPORT: $TELEGRAM_SUPPORT
+      MONGO_URI: "mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017"
+    depends_on:
+      - mongo
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
+
+  watchtower:
+    image: containrrr/watchtower
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=false'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60 --rolling-restart
