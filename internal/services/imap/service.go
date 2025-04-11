@@ -23,15 +23,14 @@ type ImapService interface {
 	Stop(ctx context.Context) error
 }
 
-type ImapServiceImpl struct {
+type imapService struct {
 	ID      int64
 	c       *imapclient.Client
-	uidNext imap.UID
-	updates chan *models.Update
+	updates chan<- *models.Update
 	done    chan struct{}
 }
 
-var _ ImapService = (*ImapServiceImpl)(nil)
+var _ ImapService = (*imapService)(nil)
 
 var defaultTickerTimeout = 5 * time.Second
 
@@ -51,14 +50,14 @@ const (
 func NewImapService(
 	imapServer string,
 	id int64,
-	updates chan *models.Update,
+	updates chan<- *models.Update,
 ) (ImapService, error) {
 	client, err := imapclient.DialTLS(imapServer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}
 
-	return &ImapServiceImpl{
+	return &imapService{
 		ID:      id,
 		c:       client,
 		updates: updates,
@@ -66,12 +65,12 @@ func NewImapService(
 	}, nil
 }
 
-func (i *ImapServiceImpl) Start(ctx context.Context) error {
+func (i *imapService) Start(ctx context.Context) error {
 	go i.run(ctx)
 	return nil
 }
 
-func (i *ImapServiceImpl) Stop(_ context.Context) error {
+func (i *imapService) Stop(_ context.Context) error {
 	err := i.Logout()
 	if err != nil {
 		return err
@@ -80,7 +79,7 @@ func (i *ImapServiceImpl) Stop(_ context.Context) error {
 	return nil
 }
 
-func (i *ImapServiceImpl) run(ctx context.Context) {
+func (i *imapService) run(ctx context.Context) {
 	ticker := time.NewTicker(defaultTickerTimeout)
 	defer ticker.Stop()
 
@@ -89,9 +88,8 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 		msg := fmt.Sprintf("imap status error: %s", err)
 		logger.Error(msg)
 	}
-	i.uidNext = uidNext
 
-	msg := fmt.Sprintf("got UIDNext: %d", i.uidNext)
+	msg := fmt.Sprintf("got UIDNext: %d", uidNext)
 	logger.Debug(msg)
 
 	for {
@@ -101,18 +99,19 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 		case <-i.done:
 			return
 		case <-ticker.C:
-			uid, err := i.Status()
+			uidNextNext, err := i.Status()
 			if err != nil {
 				msg := fmt.Sprintf("imap status error: %s", err)
 				logger.Error(msg)
 				break
 			}
 
-			if uid == i.uidNext {
+			if uidNextNext == uidNext {
 				break
 			}
 
-			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", i.uidNext, uid)
+			// TODO add fetching all mails from changed delta.
+			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNext, uidNextNext)
 			logger.Debug(msg)
 
 			err = i.Select(inbox)
@@ -122,9 +121,9 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 				break
 			}
 
-			email, err := i.FetchOne(i.uidNext)
+			email, err := i.FetchOne(uidNext)
 			if err != nil {
-				msg := fmt.Sprintf("fetch uid %d error: %s", i.uidNext, err)
+				msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
 				logger.Error(msg)
 				break
 			}
@@ -132,12 +131,12 @@ func (i *ImapServiceImpl) run(ctx context.Context) {
 				Email:   email,
 				GroupID: i.ID,
 			}
-			i.uidNext = uid
+			uidNext = uidNextNext
 		}
 	}
 }
 
-func (i *ImapServiceImpl) Login(username string, password string) error {
+func (i *imapService) Login(username string, password string) error {
 	err := i.c.Login(username, password).Wait()
 	if err != nil {
 		return fmt.Errorf("login error: %w", err)
@@ -145,7 +144,7 @@ func (i *ImapServiceImpl) Login(username string, password string) error {
 	return nil
 }
 
-func (i *ImapServiceImpl) Logout() error {
+func (i *imapService) Logout() error {
 	err := i.c.Logout().Wait()
 	if err != nil {
 		return fmt.Errorf("logout error: %w", err)
@@ -153,7 +152,7 @@ func (i *ImapServiceImpl) Logout() error {
 	return nil
 }
 
-func (i *ImapServiceImpl) Select(mailbox string) error {
+func (i *imapService) Select(mailbox string) error {
 	_, err := i.c.Select(mailbox, nil).Wait()
 	if err != nil {
 		return fmt.Errorf("select error: %w", err)
@@ -162,7 +161,7 @@ func (i *ImapServiceImpl) Select(mailbox string) error {
 	return nil
 }
 
-func (i *ImapServiceImpl) Status() (imap.UID, error) {
+func (i *imapService) Status() (imap.UID, error) {
 	data, err := i.c.Status(inbox, &imap.StatusOptions{UIDNext: true}).Wait()
 	if err != nil {
 		return 0, fmt.Errorf("status error: %w", err)
@@ -170,7 +169,7 @@ func (i *ImapServiceImpl) Status() (imap.UID, error) {
 	return data.UIDNext, nil
 }
 
-func (i *ImapServiceImpl) FetchOne(uid imap.UID) (*models.Email, error) {
+func (i *imapService) FetchOne(uid imap.UID) (*models.Email, error) {
 	email := &models.Email{}
 
 	seqSet := imap.UIDSetNum(uid)
