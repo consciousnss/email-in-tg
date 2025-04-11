@@ -25,6 +25,7 @@ func cleanTelegramHTML(input string) string {
 
 var (
 	helpTmpl  = template.Must(template.New("help").Parse(helpTemplate))
+	loginTmpl = template.Must(template.New("login").Parse(loginTemplate))
 	emailTmpl = template.Must(template.New("email").Parse(emailTemplate))
 )
 

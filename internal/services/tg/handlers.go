@@ -2,9 +2,12 @@ package tg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/un1uckyyy/email-in-tg/internal/repo"
 
 	"github.com/un1uckyyy/email-in-tg/internal/models"
 
@@ -13,6 +16,10 @@ import (
 )
 
 var validate = validator.New()
+
+const (
+	mailRuLoginURL = "https://help.mail.ru/mail/mailer/password/"
+)
 
 func (t *TelegramService) help(c tele.Context) error {
 	text, err := renderHTMLTemplate(helpTmpl, os.Getenv("TELEGRAM_SUPPORT"))
@@ -35,26 +42,68 @@ func (t *TelegramService) help(c tele.Context) error {
 func (t *TelegramService) start(c tele.Context) error {
 	ctx := context.Background()
 
-	if c.Chat().Type != tele.ChatSuperGroup {
+	chat := c.Chat()
+
+	if chat.Type != tele.ChatSuperGroup {
 		return c.Send("Привет! Для начала добавь меня в свою группу\n" +
 			"Важно, чтобы в ней были темы, тогда я смогу отправлять определенные письма в разные темы",
 		)
 	}
 
-	// TODO add check that group already registered
+	group, err := t.repo.GetGroup(ctx, chat.ID)
+	if err != nil {
+		msg := fmt.Sprintf("failed to get group: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
+
+	if errors.Is(err, repo.ErrGroupNotFound) {
+		return t.registerGroup(c)
+	}
+
+	_, err = t.repo.SetGroupActivity(ctx, group.ID, true)
+	if err != nil {
+		msg := fmt.Sprintf("failed to set group activity: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
+
+	t.pool.Register <- group
+
+	err = c.Send("Отправка писем возобновлена")
+	if err != nil {
+		msg := fmt.Sprintf("failed to send message: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
+
+	return nil
+}
+
+func (t *TelegramService) registerGroup(c tele.Context) error {
+	ctx := context.Background()
+
+	chat := c.Chat()
 
 	args := c.Args()
 	if len(args) != 2 {
-		return c.Send("Отправь команду /start в следующем формате:\n"+
-			"/start 'email-address' 'password'\n"+
-			"Как сгенерировать пароль смотри <a href=\"https://help.mail.ru/mail/mailer/password/\">здесь</a>",
-			tele.ModeHTML,
-		)
+		text, err := renderHTMLTemplate(loginTmpl, mailRuLoginURL)
+		if err != nil {
+			msg := fmt.Sprintf("failed to render template: %v", err)
+			logger.Error(msg)
+			return c.Send(somethingWentWrong)
+		}
+
+		err = c.Send(text)
+		if err != nil {
+			msg := fmt.Sprintf("failed to send message: %v", err)
+			logger.Error(msg)
+			return c.Send(somethingWentWrong)
+		}
 	}
 
 	email, password := args[0], args[1]
 
-	chat := c.Chat()
 	group := models.Group{
 		ID:    chat.ID,
 		Type:  string(chat.Type),
@@ -122,11 +171,19 @@ func (t *TelegramService) login(c tele.Context) error {
 
 	args := c.Args()
 	if len(args) != 2 {
-		return c.Send("Отправь команду /login в следующем формате:\n"+
-			"/login 'email-address' 'password'\n"+
-			"Как сгенерировать пароль смотри <a href=\"https://help.mail.ru/mail/mailer/password/\">здесь</a>",
-			tele.ModeHTML,
-		)
+		text, err := renderHTMLTemplate(loginTmpl, mailRuLoginURL)
+		if err != nil {
+			msg := fmt.Sprintf("failed to render template: %v", err)
+			logger.Error(msg)
+			return c.Send(somethingWentWrong)
+		}
+
+		err = c.Send(text)
+		if err != nil {
+			msg := fmt.Sprintf("failed to send message: %v", err)
+			logger.Error(msg)
+			return c.Send(somethingWentWrong)
+		}
 	}
 
 	groupID := c.Chat().ID

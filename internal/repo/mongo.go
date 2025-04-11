@@ -39,6 +39,23 @@ func (r *Repo) CreateGroup(ctx context.Context, group models.Group) error {
 	return nil
 }
 
+func (r *Repo) GetGroup(ctx context.Context, id int64) (*models.Group, error) {
+	coll := r.db.Collection(groupCollection)
+
+	filter := bson.M{"_id": id}
+
+	var group models.Group
+	err := coll.FindOne(ctx, filter).Decode(&group)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, ErrGroupNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &group, nil
+}
+
 func (r *Repo) GetAllActiveGroups(ctx context.Context) ([]*models.Group, error) {
 	coll := r.db.Collection(groupCollection)
 

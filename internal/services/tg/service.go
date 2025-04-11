@@ -89,7 +89,7 @@ func (t *TelegramService) run(ctx context.Context) {
 			msg := fmt.Sprintf("found subscription: %+v", sub)
 			logger.Debug(msg)
 
-			err = t.Send(ctx, sub.GroupID, sub.ThreadID, update.Email)
+			err = t.send(ctx, sub.GroupID, sub.ThreadID, update.Email)
 			if err != nil {
 				msg := fmt.Sprintf("failed to send email: %v", err)
 				logger.Error(msg)
@@ -107,23 +107,20 @@ func (t *TelegramService) registerButtons() {
 	t.bot.Handle("/subscribe", t.subscribe)
 	t.bot.Handle("/subscribe_others", t.subscribeOthers)
 	t.bot.Handle("/subscriptions", t.subscriptions)
-	t.bot.Handle(tele.OnText, t.help)
 }
 
 func (t *TelegramService) Stop() {
 	t.bot.Stop()
 }
 
-func (t *TelegramService) Send(_ context.Context, groupID int64, threadID int, email *models.Email) error {
+func (t *TelegramService) send(_ context.Context, groupID int64, threadID int, email *models.Email) error {
 	logger.Debug(fmt.Sprintf("readers len: %v", len(email.Files)))
 
 	group := &tele.User{ID: groupID}
 	email.Text = cleanTelegramHTML(email.Text)
 	text, err := renderHTMLTemplate(emailTmpl, email)
 	if err != nil {
-		msg := fmt.Sprintf("failed to render template: %v", err)
-		logger.Error(msg)
-		return err
+		return fmt.Errorf("failed to render template: %w", err)
 	}
 
 	_, err = t.bot.Send(
@@ -133,14 +130,14 @@ func (t *TelegramService) Send(_ context.Context, groupID int64, threadID int, e
 		tele.ModeHTML,
 	)
 	if err != nil {
-		logger.Error(err.Error())
+		return fmt.Errorf("failed to send email text: %w", err)
 	}
 
 	albums := splitFilesToAlbums(email.Files)
 	for _, album := range albums {
 		_, err = t.bot.SendAlbum(group, album, &tele.SendOptions{ThreadID: threadID})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to send album: %w", err)
 		}
 	}
 
