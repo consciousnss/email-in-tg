@@ -4,6 +4,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/un1uckyyy/email-in-tg/internal/models"
+	tele "gopkg.in/telebot.v4"
+
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -31,4 +34,33 @@ func renderHTMLTemplate(tmpl *template.Template, data any) (string, error) {
 		return "", err
 	}
 	return builder.String(), nil
+}
+
+const (
+	telegramAlbumMediaLimit = 10
+)
+
+func splitFilesToAlbums(files []*models.File) []tele.Album {
+	albumsNum := (len(files) + telegramAlbumMediaLimit - 1) / telegramAlbumMediaLimit
+	albums := make([]tele.Album, 0, albumsNum)
+
+	for i := 0; i < albumsNum; i++ {
+		start, end := i*telegramAlbumMediaLimit, min(len(files), (i+1)*telegramAlbumMediaLimit)
+
+		album := make(tele.Album, 0, end-start)
+
+		for j := start; j < end; j++ {
+			file := files[j]
+			album = append(album,
+				&tele.Document{
+					File:     tele.FromReader(file.Data),
+					FileName: file.Filename,
+				},
+			)
+		}
+
+		albums = append(albums, album)
+	}
+
+	return albums
 }

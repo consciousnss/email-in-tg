@@ -136,19 +136,12 @@ func (t *TelegramService) Send(_ context.Context, groupID int64, threadID int, e
 		logger.Error(err.Error())
 	}
 
-	media := make(tele.Album, 0, len(email.Files))
-	for _, file := range email.Files {
-		media = append(media,
-			&tele.Document{
-				File:     tele.FromReader(file.Data),
-				FileName: file.Filename,
-			},
-		)
-	}
-
-	_, err = t.bot.SendAlbum(group, media, &tele.SendOptions{ThreadID: threadID})
-	if err != nil {
-		return err
+	albums := splitFilesToAlbums(email.Files)
+	for _, album := range albums {
+		_, err = t.bot.SendAlbum(group, album, &tele.SendOptions{ThreadID: threadID})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
