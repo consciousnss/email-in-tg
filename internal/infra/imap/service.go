@@ -16,9 +16,6 @@ import (
 
 type ImapService interface {
 	Login(username string, password string) error
-	Logout() error
-	Select(mailbox string) error
-	FetchOne(uid imap.UID) (*models.Email, error)
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
@@ -71,7 +68,7 @@ func (i *imapService) Start(ctx context.Context) error {
 }
 
 func (i *imapService) Stop(_ context.Context) error {
-	err := i.Logout()
+	err := i.logout()
 	if err != nil {
 		return err
 	}
@@ -114,14 +111,14 @@ func (i *imapService) run(ctx context.Context) {
 			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNext, uidNextNext)
 			logger.Debug(msg)
 
-			err = i.Select(inbox)
+			err = i.selectMailbox(inbox)
 			if err != nil {
 				msg := fmt.Sprintf("imap select error: %s", err)
 				logger.Error(msg)
 				break
 			}
 
-			email, err := i.FetchOne(uidNext)
+			email, err := i.fetchOne(uidNext)
 			if err != nil {
 				msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
 				logger.Error(msg)
@@ -144,7 +141,7 @@ func (i *imapService) Login(username string, password string) error {
 	return nil
 }
 
-func (i *imapService) Logout() error {
+func (i *imapService) logout() error {
 	err := i.c.Logout().Wait()
 	if err != nil {
 		return fmt.Errorf("logout error: %w", err)
@@ -152,7 +149,7 @@ func (i *imapService) Logout() error {
 	return nil
 }
 
-func (i *imapService) Select(mailbox string) error {
+func (i *imapService) selectMailbox(mailbox string) error {
 	_, err := i.c.Select(mailbox, nil).Wait()
 	if err != nil {
 		return fmt.Errorf("select error: %w", err)
@@ -169,7 +166,7 @@ func (i *imapService) Status() (imap.UID, error) {
 	return data.UIDNext, nil
 }
 
-func (i *imapService) FetchOne(uid imap.UID) (*models.Email, error) {
+func (i *imapService) fetchOne(uid imap.UID) (*models.Email, error) {
 	email := &models.Email{}
 
 	seqSet := imap.UIDSetNum(uid)

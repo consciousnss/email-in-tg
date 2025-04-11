@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
+
 	"github.com/un1uckyyy/email-in-tg/internal/models"
-	"github.com/un1uckyyy/email-in-tg/internal/services/imap"
 )
 
 const (
@@ -20,20 +21,18 @@ type Pool interface {
 }
 
 type pool struct {
-	clients    map[int64]imap.ImapService
-	updates    chan *models.Update
-	register   chan *models.Group
-	unregister chan *models.Group
+	clients map[int64]imap.ImapService
+	updates chan *models.Update
+	factory ImapServiceFactory
 }
 
 var _ Pool = (*pool)(nil)
 
 func NewPool() Pool {
 	return &pool{
-		clients:    make(map[int64]imap.ImapService),
-		updates:    make(chan *models.Update),
-		register:   make(chan *models.Group),
-		unregister: make(chan *models.Group),
+		clients: make(map[int64]imap.ImapService),
+		updates: make(chan *models.Update),
+		factory: &defaultImapServiceFactory{},
 	}
 }
 
@@ -45,7 +44,7 @@ func (p *pool) Add(ctx context.Context, group *models.Group) error {
 	msg := fmt.Sprintf("starting group register: %v", group.ID)
 	logger.Debug(msg)
 
-	is, err := imap.NewImapService(mailRuImap, group.ID, p.updates)
+	is, err := p.factory.New(mailRuImap, group.ID, p.updates)
 	if err != nil {
 		return fmt.Errorf("error creating imap service: %v", err)
 	}
