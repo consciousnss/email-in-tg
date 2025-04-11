@@ -50,14 +50,13 @@ func (t *TelegramService) start(c tele.Context) error {
 	}
 
 	group, err := t.repo.GetGroup(ctx, chat.ID)
+	if errors.Is(err, repo.ErrGroupNotFound) {
+		return t.registerGroup(c)
+	}
 	if err != nil {
 		msg := fmt.Sprintf("failed to get group: %v", err)
 		logger.Error(msg)
 		return c.Send(somethingWentWrong)
-	}
-
-	if errors.Is(err, repo.ErrGroupNotFound) {
-		return t.registerGroup(c)
 	}
 
 	_, err = t.repo.SetGroupActivity(ctx, group.ID, true)
@@ -93,12 +92,14 @@ func (t *TelegramService) registerGroup(c tele.Context) error {
 			return c.Send(somethingWentWrong)
 		}
 
-		err = c.Send(text)
+		err = c.Send(text, tele.ModeHTML)
 		if err != nil {
 			msg := fmt.Sprintf("failed to send message: %v", err)
 			logger.Error(msg)
 			return c.Send(somethingWentWrong)
 		}
+
+		return nil
 	}
 
 	email, password := args[0], args[1]
@@ -306,6 +307,9 @@ func (t *TelegramService) subscriptions(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
+	msg := fmt.Sprintf("group %v got %v subscriptions", groupID, len(subs))
+	logger.Debug(msg)
+
 	subMenu := t.getSubscriptionsMenu(ctx, subs)
 
 	err = c.EditOrSend(subscriptionsMessage, subMenu, tele.ModeHTML)
@@ -322,12 +326,10 @@ func (t *TelegramService) getSubscriptionsMenu(
 	ctx context.Context,
 	subscriptions []*models.Subscription,
 ) *tele.ReplyMarkup {
-	menu := &tele.ReplyMarkup{}
+	menu := t.bot.NewMarkup()
 
 	var rows []tele.Row
 	for _, sub := range subscriptions {
-		subID := sub.ID.String()
-
 		var btnText string
 		if sub.SenderEmail != nil {
 			btnText = *sub.SenderEmail
@@ -335,24 +337,25 @@ func (t *TelegramService) getSubscriptionsMenu(
 			btnText = "На остальные"
 		}
 
+		subID := sub.ID.Hex()
 		btn := menu.Data(btnText, subID)
+
 		t.bot.Handle(&btn, func(c tele.Context) error {
-			err := t.repo.DeleteSubscription(ctx, subID)
-			if err != nil {
-				msg := fmt.Sprintf("failed to delete subscription: %v", err)
-				logger.Error(msg)
+			logger.Debug(fmt.Sprintf("got delete subscription %v update", subID))
+
+			if err := t.repo.DeleteSubscription(ctx, subID); err != nil {
+				logger.Error(fmt.Sprintf("failed to delete subscription: %v", err))
 				return c.Send(somethingWentWrong)
 			}
 
-			err = c.Send("Подписка отменена")
-			if err != nil {
-				msg := fmt.Sprintf("failed to send message: %v", err)
-				logger.Error(msg)
+			if err := c.Send("Подписка отменена"); err != nil {
+				logger.Error(fmt.Sprintf("failed to send message: %v", err))
 				return c.Send(somethingWentWrong)
 			}
 			return nil
 		})
 
+		rows = append(rows, menu.Row(btn))
 	}
 	menu.Inline(rows...)
 
