@@ -66,7 +66,12 @@ func (t *TelegramService) start(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	t.pool.Register <- group
+	err = t.pool.Add(ctx, group)
+	if err != nil {
+		msg := fmt.Sprintf("failed to add group: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
 
 	err = c.Send("Отправка писем возобновлена")
 	if err != nil {
@@ -129,7 +134,12 @@ func (t *TelegramService) registerGroup(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	t.pool.Register <- &group
+	err = t.pool.Add(ctx, &group)
+	if err != nil {
+		msg := fmt.Sprintf("failed to add group: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
 
 	err = c.Send("Отлично!\n" +
 		"Теперь, чтобы добавить почту отправь /subscribe в нужную тему",
@@ -154,7 +164,12 @@ func (t *TelegramService) stop(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	t.pool.Unregister <- group
+	err = t.pool.Delete(ctx, group)
+	if err != nil {
+		msg := fmt.Sprintf("failed to delete group: %v", err)
+		logger.Error(msg)
+		return c.Send(somethingWentWrong)
+	}
 
 	err = c.Send("Отправка писем остановлена. Для того, чтобы возобновить работу используйте /start")
 	if err != nil {

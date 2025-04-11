@@ -39,12 +39,6 @@ func main() {
 	}
 
 	p := pool.NewPool()
-	err = p.Start(ctx)
-	if err != nil {
-		msg := fmt.Sprintf("failed to start pool: %v", err)
-		logger.Error(msg)
-		return
-	}
 
 	r := repo.NewRepo(db)
 	ts, err := tg.NewTelegramService(cfg.TelegramToken, p, r)

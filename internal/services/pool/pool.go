@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/un1uckyyy/email-in-tg/internal/models"
@@ -12,72 +13,71 @@ const (
 	mailRuImap = "imap.mail.ru:993"
 )
 
-type Pool struct {
-	Clients    map[int64]imap.ImapService
-	Updates    chan *models.Update
-	Register   chan *models.Group
-	Unregister chan *models.Group
+type Pool interface {
+	Updates() <-chan *models.Update
+	Add(ctx context.Context, group *models.Group) error
+	Delete(ctx context.Context, group *models.Group) error
 }
 
-func NewPool() *Pool {
-	return &Pool{
-		Clients:    make(map[int64]imap.ImapService),
-		Updates:    make(chan *models.Update),
-		Register:   make(chan *models.Group),
-		Unregister: make(chan *models.Group),
+type pool struct {
+	clients    map[int64]imap.ImapService
+	updates    chan *models.Update
+	register   chan *models.Group
+	unregister chan *models.Group
+}
+
+var _ Pool = (*pool)(nil)
+
+func NewPool() Pool {
+	return &pool{
+		clients:    make(map[int64]imap.ImapService),
+		updates:    make(chan *models.Update),
+		register:   make(chan *models.Group),
+		unregister: make(chan *models.Group),
 	}
 }
 
-func (p *Pool) Start(ctx context.Context) error {
-	logger.Debug("starting pool loop...")
-	go p.run(ctx)
+func (p *pool) Updates() <-chan *models.Update {
+	return p.updates
+}
+
+func (p *pool) Add(ctx context.Context, group *models.Group) error {
+	msg := fmt.Sprintf("starting group register: %v", group.ID)
+	logger.Debug(msg)
+
+	is, err := imap.NewImapService(mailRuImap, group.ID, p.updates)
+	if err != nil {
+		return fmt.Errorf("error creating imap service: %v", err)
+	}
+	if group.Login == nil {
+		return errors.New("group login is nil")
+	}
+
+	err = is.Login(group.Login.Email, group.Login.Password)
+	if err != nil {
+		return fmt.Errorf("error imap login: %v", err)
+	}
+
+	err = is.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("error imap start: %v", err)
+	}
+
+	p.clients[group.ID] = is
+	msg = fmt.Sprintf("succesful register group: %v", group.ID)
+	logger.Debug(msg)
+
 	return nil
 }
 
-func (p *Pool) run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case group := <-p.Register:
-			msg := fmt.Sprintf("starting group register: %v", group.ID)
-			logger.Debug(msg)
-
-			is, err := imap.NewImapService(mailRuImap, group.ID, p.Updates)
-			if err != nil {
-				logger.Error(err.Error())
-				continue
-			}
-			if group.Login == nil {
-				logger.Error("login is nil")
-				continue
-			}
-
-			err = is.Login(group.Login.Email, group.Login.Password)
-			if err != nil {
-				logger.Error(err.Error())
-				continue
-			}
-
-			err = is.Start(ctx)
-			if err != nil {
-				msg := fmt.Sprintf("failed to start imap service: %v", err)
-				logger.Error(msg)
-				continue
-			}
-
-			p.Clients[group.ID] = is
-			msg = fmt.Sprintf("succesful register group: %v", group.ID)
-			logger.Debug(msg)
-		case group := <-p.Unregister:
-			err := p.Clients[group.ID].Stop(ctx)
-			if err != nil {
-				logger.Error(err.Error())
-			}
-			delete(p.Clients, group.ID)
-
-			msg := fmt.Sprintf("got group unregister update: %+v", group)
-			logger.Debug(msg)
-		}
+func (p *pool) Delete(ctx context.Context, group *models.Group) error {
+	err := p.clients[group.ID].Stop(ctx)
+	if err != nil {
+		return fmt.Errorf("error stopping imap client: %v", err)
 	}
+	delete(p.clients, group.ID)
+
+	msg := fmt.Sprintf("got group unregister update: %+v", group)
+	logger.Debug(msg)
+	return nil
 }

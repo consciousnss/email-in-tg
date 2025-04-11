@@ -19,13 +19,13 @@ const (
 
 type TelegramService struct {
 	bot  *tele.Bot
-	pool *pool.Pool
+	pool pool.Pool
 	repo *repo.Repo
 }
 
 func NewTelegramService(
 	token string,
-	p *pool.Pool,
+	p pool.Pool,
 	repo *repo.Repo,
 ) (*TelegramService, error) {
 	pref := tele.Settings{
@@ -54,7 +54,10 @@ func (t *TelegramService) Start(ctx context.Context) error {
 	logger.Debug(msg)
 
 	for _, group := range groups {
-		t.pool.Register <- group
+		err := t.pool.Add(ctx, group)
+		if err != nil {
+			return fmt.Errorf("failed to add group %v to pool: %v", group, err)
+		}
 	}
 	msg = fmt.Sprintf("register all %v groups", len(groups))
 	logger.Debug(msg)
@@ -73,7 +76,7 @@ func (t *TelegramService) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case update := <-t.pool.Updates:
+		case update := <-t.pool.Updates():
 			sub, err := t.repo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
 			if errors.Is(err, repo.ErrSubscriptionNotFound) {
 				msg := fmt.Sprintf("subscription for email %v not found", update.Email.MailFrom)
