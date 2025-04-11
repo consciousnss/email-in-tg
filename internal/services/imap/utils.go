@@ -8,12 +8,19 @@ import (
 	"github.com/un1uckyyy/email-in-tg/internal/models"
 )
 
+const (
+	noSubject = "<Без темы>"
+)
+
 func parseHeader(header mail.Header, email *models.Email) error {
 	subject, err := header.Subject()
 	if err != nil {
 		return fmt.Errorf("get subject error: %w", err)
 	}
 	email.Subject = subject
+	if subject == "" {
+		email.Subject = noSubject
+	}
 
 	date, err := header.Date()
 	if err != nil {

@@ -53,7 +53,7 @@ func TestParseHeader_MissingSubject(t *testing.T) {
 	err := parseHeader(header, email)
 
 	assert.NoError(t, err)
-	assert.Equal(t, email.Subject, "")
+	assert.Equal(t, email.Subject, noSubject)
 }
 
 func TestParseHeader_MissingFrom(t *testing.T) {
