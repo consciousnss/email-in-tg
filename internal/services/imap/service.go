@@ -205,7 +205,7 @@ func (i *ImapServiceImpl) FetchOne(uid imap.UID) (*models.Email, error) {
 			return nil, fmt.Errorf("mail parse err: %w", err)
 		}
 
-		err = headerParse(mr.Header, email)
+		err = parseHeader(mr.Header, email)
 		if err != nil {
 			return nil, fmt.Errorf("header parse err: %w", err)
 		}
