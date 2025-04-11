@@ -27,3 +27,6 @@ const emailTemplate = `✉️ <b>Новое письмо</b> ✉️
 <b>Дата:</b> {{.Date}}
 
 {{.Text}}`
+
+const subscriptionsMessage = `Активные подписки
+Нажмите на подписку, чтобы <b>отписаться</b>`

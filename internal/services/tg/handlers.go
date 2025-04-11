@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/un1uckyyy/email-in-tg/internal/repo"
 
@@ -307,16 +306,9 @@ func (t *TelegramService) subscriptions(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	senders := make([]string, 0, len(subs))
-	for _, sub := range subs {
-		if sub.SenderEmail != nil {
-			senders = append(senders, *sub.SenderEmail)
-		} else {
-			senders = append(senders, "on others")
-		}
-	}
+	subMenu := t.getSubscriptionsMenu(ctx, subs)
 
-	err = c.Send(strings.Join(senders, "\n")) // TODO add sending list of delete sub buttons
+	err = c.EditOrSend(subscriptionsMessage, subMenu, tele.ModeHTML)
 	if err != nil {
 		msg := fmt.Sprintf("failed to send message: %v", err)
 		logger.Error(msg)
@@ -324,4 +316,45 @@ func (t *TelegramService) subscriptions(c tele.Context) error {
 	}
 
 	return nil
+}
+
+func (t *TelegramService) getSubscriptionsMenu(
+	ctx context.Context,
+	subscriptions []*models.Subscription,
+) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	var rows []tele.Row
+	for _, sub := range subscriptions {
+		subID := sub.ID.String()
+
+		var btnText string
+		if sub.SenderEmail != nil {
+			btnText = *sub.SenderEmail
+		} else {
+			btnText = "На остальные"
+		}
+
+		btn := menu.Data(btnText, subID)
+		t.bot.Handle(&btn, func(c tele.Context) error {
+			err := t.repo.DeleteSubscription(ctx, subID)
+			if err != nil {
+				msg := fmt.Sprintf("failed to delete subscription: %v", err)
+				logger.Error(msg)
+				return c.Send(somethingWentWrong)
+			}
+
+			err = c.Send("Подписка отменена")
+			if err != nil {
+				msg := fmt.Sprintf("failed to send message: %v", err)
+				logger.Error(msg)
+				return c.Send(somethingWentWrong)
+			}
+			return nil
+		})
+
+	}
+	menu.Inline(rows...)
+
+	return menu
 }
