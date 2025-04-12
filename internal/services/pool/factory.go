@@ -1,8 +1,8 @@
 package pool
 
 import (
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
-	"github.com/un1uckyyy/email-in-tg/internal/models"
 )
 
 type ImapServiceFactory interface {
