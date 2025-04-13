@@ -18,6 +18,7 @@ func init() {
 	p.AllowAttrs("href").OnElements("a")
 }
 
+// TODO rework it
 func cleanTelegramHTML(input string) string {
 	html := p.Sanitize(input)
 
@@ -39,8 +40,15 @@ func renderHTMLTemplate(tmpl *template.Template, data any) (string, error) {
 }
 
 const (
+	telegramMessageLenLimit = 4096
 	telegramAlbumMediaLimit = 10
 )
+
+// TODO split messages with max telegramMessageLenLimit each
+// nolint
+func splitTextToMessages(text string) []string {
+	return strings.Split(text, "\n")
+}
 
 func splitFilesToAlbums(files []*models.File) []tele.Album {
 	albumsNum := (len(files) + telegramAlbumMediaLimit - 1) / telegramAlbumMediaLimit

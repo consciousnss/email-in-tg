@@ -18,7 +18,7 @@ type EmailLogin struct {
 
 type Subscription struct {
 	ID          string
-	SenderEmail *string `validate:"required_if=OtherSenders false,email"`
+	SenderEmail *string `validate:"omitempty,required_if=OtherSenders false,email"`
 	GroupID     int64   `validate:"required"`
 	ThreadID    int
 
