@@ -4,7 +4,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/un1uckyyy/email-in-tg/internal/models"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/microcosm-cc/bluemonday"

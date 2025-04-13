@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/un1uckyyy/email-in-tg/internal/repo"
-
-	"github.com/un1uckyyy/email-in-tg/internal/models"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/repo"
 
 	"github.com/go-playground/validator/v10"
 	tele "gopkg.in/telebot.v4"
@@ -20,7 +19,7 @@ const (
 	mailRuLoginURL = "https://help.mail.ru/mail/mailer/password/"
 )
 
-func (t *TelegramService) help(c tele.Context) error {
+func (t *telegramService) help(c tele.Context) error {
 	text, err := renderHTMLTemplate(helpTmpl, os.Getenv("TELEGRAM_SUPPORT"))
 	if err != nil {
 		msg := fmt.Sprintf("failed to render template: %v", err)
@@ -38,7 +37,7 @@ func (t *TelegramService) help(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) start(c tele.Context) error {
+func (t *telegramService) start(c tele.Context) error {
 	ctx := context.Background()
 
 	chat := c.Chat()
@@ -49,7 +48,7 @@ func (t *TelegramService) start(c tele.Context) error {
 		)
 	}
 
-	group, err := t.repo.GetGroup(ctx, chat.ID)
+	group, err := t.groupRepo.GetGroup(ctx, chat.ID)
 	if errors.Is(err, repo.ErrGroupNotFound) {
 		return t.registerGroup(c)
 	}
@@ -59,7 +58,7 @@ func (t *TelegramService) start(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	_, err = t.repo.SetGroupActivity(ctx, group.ID, true)
+	_, err = t.groupRepo.SetGroupActivity(ctx, group.ID, true)
 	if err != nil {
 		msg := fmt.Sprintf("failed to set group activity: %v", err)
 		logger.Error(msg)
@@ -83,7 +82,7 @@ func (t *TelegramService) start(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) registerGroup(c tele.Context) error {
+func (t *telegramService) registerGroup(c tele.Context) error {
 	ctx := context.Background()
 
 	chat := c.Chat()
@@ -127,7 +126,7 @@ func (t *TelegramService) registerGroup(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	err = t.repo.CreateGroup(ctx, group)
+	err = t.groupRepo.CreateGroup(ctx, group)
 	if err != nil {
 		msg := fmt.Sprintf("group creation error: %v", err)
 		logger.Error(msg)
@@ -153,11 +152,11 @@ func (t *TelegramService) registerGroup(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) stop(c tele.Context) error {
+func (t *telegramService) stop(c tele.Context) error {
 	ctx := context.Background()
 
 	groupID := c.Chat().ID
-	group, err := t.repo.SetGroupActivity(ctx, groupID, false)
+	group, err := t.groupRepo.SetGroupActivity(ctx, groupID, false)
 	if err != nil {
 		msg := fmt.Sprintf("failed to set group activity: %v", err)
 		logger.Error(msg)
@@ -181,7 +180,7 @@ func (t *TelegramService) stop(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) login(c tele.Context) error {
+func (t *telegramService) login(c tele.Context) error {
 	ctx := context.Background()
 
 	args := c.Args()
@@ -215,7 +214,7 @@ func (t *TelegramService) login(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	err = t.repo.SetEmailLogin(ctx, groupID, credentials)
+	err = t.groupRepo.SetEmailLogin(ctx, groupID, credentials)
 	if err != nil {
 		msg := fmt.Sprintf("group imap credentials set error: %v", err)
 		logger.Error(msg)
@@ -232,7 +231,7 @@ func (t *TelegramService) login(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) subscribe(c tele.Context) error {
+func (t *telegramService) subscribe(c tele.Context) error {
 	ctx := context.Background()
 
 	args := c.Args()
@@ -256,7 +255,7 @@ func (t *TelegramService) subscribe(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	err = t.repo.CreateSubscription(ctx, subscription)
+	err = t.subRepo.CreateSubscription(ctx, subscription)
 	if err != nil {
 		msg := fmt.Sprintf("subscription set error: %v", err)
 		logger.Error(msg)
@@ -275,7 +274,7 @@ func (t *TelegramService) subscribe(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) subscribeOthers(c tele.Context) error {
+func (t *telegramService) subscribeOthers(c tele.Context) error {
 	ctx := context.Background()
 
 	subscription := models.Subscription{
@@ -292,7 +291,7 @@ func (t *TelegramService) subscribeOthers(c tele.Context) error {
 		return c.Send(somethingWentWrong)
 	}
 
-	err = t.repo.CreateSubscription(ctx, subscription)
+	err = t.subRepo.CreateSubscription(ctx, subscription)
 	if err != nil {
 		msg := fmt.Sprintf("subscription set error: %v", err)
 		logger.Error(msg)
@@ -311,11 +310,11 @@ func (t *TelegramService) subscribeOthers(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) subscriptions(c tele.Context) error {
+func (t *telegramService) subscriptions(c tele.Context) error {
 	ctx := context.Background()
 
 	groupID := c.Chat().ID
-	subs, err := t.repo.GetAllSubscriptions(ctx, groupID)
+	subs, err := t.subRepo.GetAllSubscriptions(ctx, groupID)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get subscriptions: %v", err)
 		logger.Error(msg)
@@ -337,7 +336,7 @@ func (t *TelegramService) subscriptions(c tele.Context) error {
 	return nil
 }
 
-func (t *TelegramService) getSubscriptionsMenu(
+func (t *telegramService) getSubscriptionsMenu(
 	ctx context.Context,
 	subscriptions []*models.Subscription,
 ) *tele.ReplyMarkup {
@@ -352,13 +351,13 @@ func (t *TelegramService) getSubscriptionsMenu(
 			btnText = "На остальные"
 		}
 
-		subID := sub.ID.Hex()
+		subID := sub.ID
 		btn := menu.Data(btnText, subID)
 
 		t.bot.Handle(&btn, func(c tele.Context) error {
 			logger.Debug(fmt.Sprintf("got delete subscription %v update", subID))
 
-			if err := t.repo.DeleteSubscription(ctx, subID); err != nil {
+			if err := t.subRepo.DeleteSubscription(ctx, subID); err != nil {
 				logger.Error(fmt.Sprintf("failed to delete subscription: %v", err))
 				return c.Send(somethingWentWrong)
 			}

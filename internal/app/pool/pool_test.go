@@ -3,11 +3,13 @@ package pool
 import (
 	"context"
 	"errors"
-	models2 "github.com/un1uckyyy/email-in-tg/internal/domain/models"
 	"testing"
 
+	"github.com/un1uckyyy/email-in-tg/internal/domain/mail"
+
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
 )
 
 type mockImapService struct {
@@ -25,7 +27,7 @@ func (m *mockImapService) Login(email, password string) error {
 	return m.loginErr
 }
 
-func (m *mockImapService) Start(ctx context.Context) error {
+func (m *mockImapService) Start(ctx context.Context, updates chan<- *models.Update) error {
 	m.startCalled = true
 	return m.startErr
 }
@@ -40,7 +42,7 @@ type mockFactory struct {
 	err     error
 }
 
-func (f *mockFactory) New(addr string, groupID int64, updates chan *models2.Update) (imap.ImapService, error) {
+func (f *mockFactory) New(addr string, groupID int64) (mail.MailboxWatcher, error) {
 	return f.service, f.err
 }
 
@@ -50,14 +52,14 @@ func TestPool_Add_Success(t *testing.T) {
 	mockFact := &mockFactory{service: mockSvc}
 
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 		factory: mockFact,
 	}
 
-	group := &models2.Group{
+	group := &models.Group{
 		ID: 123,
-		Login: &models2.EmailLogin{
+		Login: &models.EmailLogin{
 			Email:    "test@mail.ru",
 			Password: "pass",
 		},
@@ -75,14 +77,14 @@ func TestPool_Add_LoginError(t *testing.T) {
 	mockFact := &mockFactory{service: mockSvc}
 
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 		factory: mockFact,
 	}
 
-	group := &models2.Group{
+	group := &models.Group{
 		ID: 1,
-		Login: &models2.EmailLogin{
+		Login: &models.EmailLogin{
 			Email:    "x@mail.ru",
 			Password: "badpass",
 		},
@@ -101,14 +103,14 @@ func TestPool_Add_StartError(t *testing.T) {
 	mockFact := &mockFactory{service: mockSvc}
 
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 		factory: mockFact,
 	}
 
-	group := &models2.Group{
+	group := &models.Group{
 		ID: 2,
-		Login: &models2.EmailLogin{
+		Login: &models.EmailLogin{
 			Email:    "test@mail.ru",
 			Password: "pass",
 		},
@@ -124,11 +126,11 @@ func TestPool_Delete_Success(t *testing.T) {
 	ctx := context.Background()
 	mockSvc := &mockImapService{}
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 	}
 
-	group := &models2.Group{ID: 3}
+	group := &models.Group{ID: 3}
 	p.clients[group.ID] = mockSvc
 
 	err := p.Delete(ctx, group)
@@ -142,11 +144,11 @@ func TestPool_Delete_StopError(t *testing.T) {
 	ctx := context.Background()
 	mockSvc := &mockImapService{stopErr: errors.New("stop failed")}
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 	}
 
-	group := &models2.Group{ID: 4}
+	group := &models.Group{ID: 4}
 	p.clients[group.ID] = mockSvc
 
 	err := p.Delete(ctx, group)
@@ -160,12 +162,12 @@ func TestPool_Add_NilLogin(t *testing.T) {
 	mockFact := &mockFactory{service: mockSvc}
 
 	p := &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
 		factory: mockFact,
 	}
 
-	group := &models2.Group{ID: 5, Login: nil}
+	group := &models.Group{ID: 5, Login: nil}
 	err := p.Add(ctx, group)
 	assert.ErrorContains(t, err, "group login is nil")
 	assert.False(t, mockSvc.loginCalled)
@@ -174,11 +176,11 @@ func TestPool_Add_NilLogin(t *testing.T) {
 
 func TestPool_Updates_Channel(t *testing.T) {
 	p := &pool{
-		updates: make(chan *models2.Update, 1),
+		updates: make(chan *models.Update, 1),
 	}
 
-	expected := &models2.Update{
-		Email: &models2.Email{
+	expected := &models.Update{
+		Email: &models.Email{
 			Text: "hello",
 		},
 	}

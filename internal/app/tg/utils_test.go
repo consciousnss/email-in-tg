@@ -6,8 +6,9 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/un1uckyyy/email-in-tg/internal/models"
 	tele "gopkg.in/telebot.v4"
 )
 

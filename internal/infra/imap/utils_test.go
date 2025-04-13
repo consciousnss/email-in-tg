@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+
 	"github.com/emersion/go-message/mail"
 	"github.com/stretchr/testify/assert"
-	"github.com/un1uckyyy/email-in-tg/internal/models"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/un1uckyyy/email-in-tg/internal/repo"
+	mongoinfra "github.com/un1uckyyy/email-in-tg/internal/infra/mongo"
 
-	"github.com/un1uckyyy/email-in-tg/internal/services/pool"
-	"github.com/un1uckyyy/email-in-tg/internal/services/tg"
+	"github.com/un1uckyyy/email-in-tg/internal/app/pool"
+	"github.com/un1uckyyy/email-in-tg/internal/app/tg"
 
 	"github.com/un1uckyyy/email-in-tg/pkg/slogger"
 
@@ -40,8 +40,10 @@ func main() {
 
 	p := pool.NewPool()
 
-	r := repo.NewRepo(db)
-	ts, err := tg.NewTelegramService(cfg.TelegramToken, p, r)
+	groupRepo := mongoinfra.NewGroupRepo(db.DB)
+	subRepo := mongoinfra.NewSubscriptionRepo(db.DB)
+
+	ts, err := tg.NewTelegramService(cfg.TelegramToken, p, groupRepo, subRepo)
 	if err != nil {
 		msg := fmt.Sprintf("failed to init telegram: %v", err)
 		logger.Error(msg)

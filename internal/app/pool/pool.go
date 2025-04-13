@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	models2 "github.com/un1uckyyy/email-in-tg/internal/domain/models"
 
-	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/mail"
+
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 )
 
 const (
@@ -14,36 +15,36 @@ const (
 )
 
 type Pool interface {
-	Updates() <-chan *models2.Update
-	Add(ctx context.Context, group *models2.Group) error
-	Delete(ctx context.Context, group *models2.Group) error
+	Updates() <-chan *models.Update
+	Add(ctx context.Context, group *models.Group) error
+	Delete(ctx context.Context, group *models.Group) error
 }
 
 type pool struct {
-	clients map[int64]imap.ImapService
-	updates chan *models2.Update
-	factory ImapServiceFactory
+	clients map[int64]mail.MailboxWatcher
+	updates chan *models.Update
+	factory MailboxWatcherFactory
 }
 
 var _ Pool = (*pool)(nil)
 
 func NewPool() Pool {
 	return &pool{
-		clients: make(map[int64]imap.ImapService),
-		updates: make(chan *models2.Update),
-		factory: &defaultImapServiceFactory{},
+		clients: make(map[int64]mail.MailboxWatcher),
+		updates: make(chan *models.Update),
+		factory: &defaultMailboxWatcherFactory{},
 	}
 }
 
-func (p *pool) Updates() <-chan *models2.Update {
+func (p *pool) Updates() <-chan *models.Update {
 	return p.updates
 }
 
-func (p *pool) Add(ctx context.Context, group *models2.Group) error {
+func (p *pool) Add(ctx context.Context, group *models.Group) error {
 	msg := fmt.Sprintf("starting group register: %v", group.ID)
 	logger.Debug(msg)
 
-	is, err := p.factory.New(mailRuImap, group.ID, p.updates)
+	is, err := p.factory.New(mailRuImap, group.ID)
 	if err != nil {
 		return fmt.Errorf("error creating imap service: %v", err)
 	}
@@ -56,7 +57,7 @@ func (p *pool) Add(ctx context.Context, group *models2.Group) error {
 		return fmt.Errorf("error imap login: %v", err)
 	}
 
-	err = is.Start(ctx)
+	err = is.Start(ctx, p.updates)
 	if err != nil {
 		return fmt.Errorf("error imap start: %v", err)
 	}
@@ -68,7 +69,7 @@ func (p *pool) Add(ctx context.Context, group *models2.Group) error {
 	return nil
 }
 
-func (p *pool) Delete(ctx context.Context, group *models2.Group) error {
+func (p *pool) Delete(ctx context.Context, group *models.Group) error {
 	err := p.clients[group.ID].Stop(ctx)
 	if err != nil {
 		return fmt.Errorf("error stopping imap client: %v", err)

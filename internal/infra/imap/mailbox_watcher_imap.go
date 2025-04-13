@@ -8,17 +8,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 	"github.com/emersion/go-message/mail"
-	"github.com/un1uckyyy/email-in-tg/internal/models"
+	mailboxwatcher "github.com/un1uckyyy/email-in-tg/internal/domain/mail"
 )
-
-type ImapService interface {
-	Login(username string, password string) error
-	Start(ctx context.Context) error
-	Stop(ctx context.Context) error
-}
 
 type imapService struct {
 	ID      int64
@@ -27,7 +23,7 @@ type imapService struct {
 	done    chan struct{}
 }
 
-var _ ImapService = (*imapService)(nil)
+var _ mailboxwatcher.MailboxWatcher = (*imapService)(nil)
 
 var defaultTickerTimeout = 5 * time.Second
 
@@ -47,22 +43,21 @@ const (
 func NewImapService(
 	imapServer string,
 	id int64,
-	updates chan<- *models.Update,
-) (ImapService, error) {
+) (mailboxwatcher.MailboxWatcher, error) {
 	client, err := imapclient.DialTLS(imapServer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}
 
 	return &imapService{
-		ID:      id,
-		c:       client,
-		updates: updates,
-		done:    make(chan struct{}),
+		ID:   id,
+		c:    client,
+		done: make(chan struct{}),
 	}, nil
 }
 
-func (i *imapService) Start(ctx context.Context) error {
+func (i *imapService) Start(ctx context.Context, updates chan<- *models.Update) error {
+	i.updates = updates
 	go i.run(ctx)
 	return nil
 }

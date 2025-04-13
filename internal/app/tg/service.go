@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/un1uckyyy/email-in-tg/internal/models"
-	"github.com/un1uckyyy/email-in-tg/internal/repo"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/repo"
 
-	"github.com/un1uckyyy/email-in-tg/internal/services/pool"
+	"github.com/un1uckyyy/email-in-tg/internal/app/pool"
 	tele "gopkg.in/telebot.v4"
 )
 
@@ -17,17 +17,24 @@ const (
 	pollerTimeout = 10 * time.Second
 )
 
-type TelegramService struct {
-	bot  *tele.Bot
-	pool pool.Pool
-	repo *repo.Repo
+type TelegramService interface {
+	Start(ctx context.Context) error
+	Stop()
+}
+
+type telegramService struct {
+	bot       *tele.Bot
+	pool      pool.Pool
+	groupRepo repo.GroupRepository
+	subRepo   repo.SubscriptionRepository
 }
 
 func NewTelegramService(
 	token string,
 	p pool.Pool,
-	repo *repo.Repo,
-) (*TelegramService, error) {
+	groupRepo repo.GroupRepository,
+	subRepo repo.SubscriptionRepository,
+) (TelegramService, error) {
 	pref := tele.Settings{
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: pollerTimeout},
@@ -37,15 +44,16 @@ func NewTelegramService(
 		return nil, err
 	}
 
-	return &TelegramService{
-		bot:  bot,
-		pool: p,
-		repo: repo,
+	return &telegramService{
+		bot:       bot,
+		pool:      p,
+		groupRepo: groupRepo,
+		subRepo:   subRepo,
 	}, nil
 }
 
-func (t *TelegramService) Start(ctx context.Context) error {
-	groups, err := t.repo.GetAllActiveGroups(ctx)
+func (t *telegramService) Start(ctx context.Context) error {
+	groups, err := t.groupRepo.GetAllActiveGroups(ctx)
 	if err != nil {
 		return err
 	}
@@ -71,13 +79,13 @@ func (t *TelegramService) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *TelegramService) run(ctx context.Context) {
+func (t *telegramService) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case update := <-t.pool.Updates():
-			sub, err := t.repo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
+			sub, err := t.subRepo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
 			if errors.Is(err, repo.ErrSubscriptionNotFound) {
 				msg := fmt.Sprintf("subscription for email %v not found", update.Email.MailFrom)
 				logger.Error(msg)
@@ -102,7 +110,7 @@ func (t *TelegramService) run(ctx context.Context) {
 	}
 }
 
-func (t *TelegramService) registerButtons() {
+func (t *telegramService) registerButtons() {
 	t.bot.Handle("/help", t.help)
 	t.bot.Handle("/start", t.start)
 	t.bot.Handle("/stop", t.stop)
@@ -112,11 +120,11 @@ func (t *TelegramService) registerButtons() {
 	t.bot.Handle("/subscriptions", t.subscriptions)
 }
 
-func (t *TelegramService) Stop() {
+func (t *telegramService) Stop() {
 	t.bot.Stop()
 }
 
-func (t *TelegramService) send(_ context.Context, groupID int64, threadID int, email *models.Email) error {
+func (t *telegramService) send(_ context.Context, groupID int64, threadID int, email *models.Email) error {
 	logger.Debug(fmt.Sprintf("readers len: %v", len(email.Files)))
 
 	group := &tele.User{ID: groupID}
