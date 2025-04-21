@@ -2,11 +2,12 @@ package pool
 
 import (
 	"github.com/un1uckyyy/email-in-tg/internal/domain/mail"
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
 )
 
 type MailboxWatcherFactory interface {
-	New(address string, groupID int64) (mail.MailboxWatcher, error)
+	New(sd models.MailServiceData) (mail.MailboxWatcher, error)
 }
 
 type defaultMailboxWatcherFactory struct{}
@@ -14,8 +15,7 @@ type defaultMailboxWatcherFactory struct{}
 var _ MailboxWatcherFactory = (*defaultMailboxWatcherFactory)(nil)
 
 func (f *defaultMailboxWatcherFactory) New(
-	address string,
-	id int64,
+	sd models.MailServiceData,
 ) (mail.MailboxWatcher, error) {
-	return imap.NewImapService(address, id)
+	return imap.NewImapService(sd)
 }

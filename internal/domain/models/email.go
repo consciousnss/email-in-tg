@@ -2,7 +2,14 @@ package models
 
 import (
 	"io"
+	"time"
 )
+
+type MailServiceData struct {
+	GroupID      int64
+	Provider     MailProvider
+	PollInterval time.Duration
+}
 
 type Update struct {
 	GroupID int64

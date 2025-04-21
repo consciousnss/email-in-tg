@@ -17,6 +17,7 @@ var validate = validator.New()
 
 const (
 	mailRuLoginURL = "https://help.mail.ru/mail/mailer/password/"
+	yandexLoginURL = "https://yandex.com/support/id/en/authorization/app-passwords#create"
 )
 
 func (t *telegramService) help(c tele.Context) error {

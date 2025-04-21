@@ -10,10 +10,6 @@ import (
 	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 )
 
-const (
-	mailRuImap = "imap.mail.ru:993"
-)
-
 type Pool interface {
 	Updates() <-chan *models.Update
 	Add(ctx context.Context, group *models.Group) error
@@ -44,12 +40,18 @@ func (p *pool) Add(ctx context.Context, group *models.Group) error {
 	msg := fmt.Sprintf("starting group register: %v", group.ID)
 	logger.Debug(msg)
 
-	is, err := p.factory.New(mailRuImap, group.ID)
-	if err != nil {
-		return fmt.Errorf("error creating imap service: %v", err)
-	}
 	if group.Login == nil {
 		return errors.New("group login is nil")
+	}
+
+	sd := models.MailServiceData{
+		GroupID:      group.ID,
+		Provider:     group.Provider,
+		PollInterval: group.PollInterval,
+	}
+	is, err := p.factory.New(sd)
+	if err != nil {
+		return fmt.Errorf("error creating imap service: %v", err)
 	}
 
 	err = is.Login(group.Login.Email, group.Login.Password)

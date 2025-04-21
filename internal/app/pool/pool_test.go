@@ -42,7 +42,7 @@ type mockFactory struct {
 	err     error
 }
 
-func (f *mockFactory) New(addr string, groupID int64) (mail.MailboxWatcher, error) {
+func (f *mockFactory) New(sd models.MailServiceData) (mail.MailboxWatcher, error) {
 	return f.service, f.err
 }
 

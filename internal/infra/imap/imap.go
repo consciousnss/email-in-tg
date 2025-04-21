@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
@@ -17,43 +16,42 @@ import (
 )
 
 type imapService struct {
-	ID      int64
-	c       *imapclient.Client
-	updates chan<- *models.Update
-	done    chan struct{}
+	serviceData models.MailServiceData
+	c           *imapclient.Client
+	updates     chan<- *models.Update
+	done        chan struct{}
 }
 
 var _ mailboxwatcher.MailboxWatcher = (*imapService)(nil)
-
-var defaultTickerTimeout = 5 * time.Second
-
-func init() {
-	poolTimeoutStr := os.Getenv("IMAP_POOL_TIMEOUT")
-	poolTimeout, err := time.ParseDuration(poolTimeoutStr)
-	if err != nil {
-		return
-	}
-	defaultTickerTimeout = poolTimeout
-}
 
 const (
 	inbox = "INBOX"
 )
 
 func NewImapService(
-	imapServer string,
-	id int64,
+	sd models.MailServiceData,
 ) (mailboxwatcher.MailboxWatcher, error) {
-	client, err := imapclient.DialTLS(imapServer, nil)
+	is := &imapService{
+		serviceData: sd,
+		c:           nil,
+		done:        make(chan struct{}),
+	}
+
+	client, err := is.connect()
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}
+	is.c = client
+	return is, nil
+}
 
-	return &imapService{
-		ID:   id,
-		c:    client,
-		done: make(chan struct{}),
-	}, nil
+func (i *imapService) connect() (*imapclient.Client, error) {
+	provider := string(i.serviceData.Provider)
+	client, err := imapclient.DialTLS(provider, nil)
+	if err != nil {
+		return nil, fmt.Errorf("dial TLS error: %w", err)
+	}
+	return client, nil
 }
 
 func (i *imapService) Start(ctx context.Context, updates chan<- *models.Update) error {
@@ -72,7 +70,7 @@ func (i *imapService) Stop(_ context.Context) error {
 }
 
 func (i *imapService) run(ctx context.Context) {
-	ticker := time.NewTicker(defaultTickerTimeout)
+	ticker := time.NewTicker(i.serviceData.PollInterval)
 	defer ticker.Stop()
 
 	uidNext, err := i.Status()
@@ -121,7 +119,7 @@ func (i *imapService) run(ctx context.Context) {
 			}
 			i.updates <- &models.Update{
 				Email:   email,
-				GroupID: i.ID,
+				GroupID: i.serviceData.GroupID,
 			}
 			uidNext = uidNextNext
 		}
