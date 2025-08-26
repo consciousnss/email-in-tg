@@ -16,13 +16,3 @@ services:
       MONGO_URI: "mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017"
     depends_on:
       - mongo
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=true'
-
-  watchtower:
-    image: containrrr/watchtower
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=false'
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 60 --rolling-restart

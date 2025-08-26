@@ -1,0 +1,4 @@
+name: email-in-tg
+working_dir: /deploy/app
+compose_files:
+  - compose.yaml

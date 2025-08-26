@@ -1,0 +1,19 @@
+services:
+  app:
+    container_name: doco-cd
+    image: ghcr.io/kimdre/doco-cd:0.32.0
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
+      GIT_ACCESS_TOKEN: $GIT_ACCESS_TOKEN
+      WEBHOOK_SECRET: $WEBHOOK_SECRET
+      POLL_CONFIG: |
+        - url: https://github.com/consciousnss/email-in-tg.git
+          private: true
+          interval: 60
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - data:/data
+
+volumes:
+  data:
