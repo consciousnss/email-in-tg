@@ -91,3 +91,36 @@ func TestRenderHTMLTemplate_InvalidTemplate(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, output)
 }
+
+func TestSplitTextToMessages_ASCII(t *testing.T) {
+	text := "abcdefghij" // 10 runes
+	got := splitTextToMessages(text, 3)
+	want := []string{"abc", "def", "ghi", "j"}
+	assert.Equal(t, want, got)
+}
+
+func TestSplitTextToMessages_ExactDivision(t *testing.T) {
+	text := "abcdef" // 6 runes
+	got := splitTextToMessages(text, 3)
+	want := []string{"abc", "def"}
+	assert.Equal(t, want, got)
+}
+
+func TestSplitTextToMessages_UTF8(t *testing.T) {
+	text := "Привет😊🚀" // runes: П р и в е т 😊 🚀
+	got := splitTextToMessages(text, 2)
+	want := []string{"Пр", "ив", "ет", "😊🚀"}
+	assert.Equal(t, want, got)
+}
+
+func TestSplitTextToMessages_EmptyString(t *testing.T) {
+	got := splitTextToMessages("", 5)
+	assert.Equal(t, 0, len(got))
+}
+
+func TestSplitTextToMessages_LimitGreaterThanLen(t *testing.T) {
+	text := "abc"
+	got := splitTextToMessages(text, 10)
+	want := []string{"abc"}
+	assert.Equal(t, want, got)
+}

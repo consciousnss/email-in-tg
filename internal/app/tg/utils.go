@@ -36,16 +36,29 @@ const (
 	telegramAlbumMediaLimit = 10
 )
 
-// TODO add unit tests
 func splitTextToMessages(text string, limit int) []string {
-	msgCount := len(text) / limit
-	if len(text)%limit != 0 {
+	if text == "" {
+		return []string{}
+	}
+
+	runes := []rune(text)
+	n := len(runes)
+	if limit >= n {
+		return []string{text}
+	}
+
+	msgCount := n / limit
+	if n%limit != 0 {
 		msgCount++
 	}
 
 	messages := make([]string, 0, msgCount)
-	for i := 0; i < msgCount; i++ {
-		messages = append(messages, text[i*limit:(i+1)*limit])
+	for i := 0; i < n; i += limit {
+		end := i + limit
+		if end > n {
+			end = n
+		}
+		messages = append(messages, string(runes[i:end]))
 	}
 
 	return messages
