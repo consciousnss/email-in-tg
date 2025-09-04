@@ -4,25 +4,16 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/k3a/html2text"
+
 	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 
 	tele "gopkg.in/telebot.v4"
-
-	"github.com/microcosm-cc/bluemonday"
 )
 
-var p = bluemonday.NewPolicy()
-
-func init() {
-	p.AllowElements("b", "strong", "i", "em", "code", "s", "strike", "del", "u", "pre")
-	p.AllowAttrs("href").OnElements("a")
-}
-
-// TODO rework it
-func cleanTelegramHTML(input string) string {
-	html := p.Sanitize(input)
-
-	return html
+// TODO add unit tests
+func html2Text(input string) string {
+	return html2text.HTML2TextWithOptions(input, html2text.WithLinksInnerText())
 }
 
 var (
@@ -31,6 +22,7 @@ var (
 	emailTmpl = template.Must(template.New("email").Parse(emailTemplate))
 )
 
+// TODO update unit tests
 func renderHTMLTemplate(tmpl *template.Template, data any) (string, error) {
 	var builder strings.Builder
 	if err := tmpl.Execute(&builder, data); err != nil {
@@ -44,10 +36,32 @@ const (
 	telegramAlbumMediaLimit = 10
 )
 
-// TODO split messages with max telegramMessageLenLimit each
-// nolint
-func splitTextToMessages(text string) []string {
-	return strings.Split(text, "\n")
+func splitTextToMessages(text string, limit int) []string {
+	if text == "" {
+		return []string{}
+	}
+
+	runes := []rune(text)
+	n := len(runes)
+	if limit >= n {
+		return []string{text}
+	}
+
+	msgCount := n / limit
+	if n%limit != 0 {
+		msgCount++
+	}
+
+	messages := make([]string, 0, msgCount)
+	for i := 0; i < n; i += limit {
+		end := i + limit
+		if end > n {
+			end = n
+		}
+		messages = append(messages, string(runes[i:end]))
+	}
+
+	return messages
 }
 
 func splitFilesToAlbums(files []*models.File) []tele.Album {

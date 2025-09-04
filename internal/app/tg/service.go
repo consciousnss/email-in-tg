@@ -130,20 +130,23 @@ func (t *telegramService) send(_ context.Context, groupID int64, threadID int, e
 	logger.Debug(fmt.Sprintf("readers len: %v", len(email.Files)))
 
 	group := &tele.User{ID: groupID}
-	email.Text = cleanTelegramHTML(email.Text)
+	email.Text = html2Text(email.Text)
 	text, err := renderHTMLTemplate(emailTmpl, email)
 	if err != nil {
 		return fmt.Errorf("failed to render template: %w", err)
 	}
 
-	_, err = t.bot.Send(
-		group,
-		text,
-		&tele.SendOptions{ThreadID: threadID},
-		tele.ModeHTML,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to send email text: %w", err)
+	messages := splitTextToMessages(text, telegramMessageLenLimit)
+	for _, message := range messages {
+		_, err = t.bot.Send(
+			group,
+			message,
+			&tele.SendOptions{ThreadID: threadID},
+			tele.ModeHTML,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to send email text: %w", err)
+		}
 	}
 
 	albums := splitFilesToAlbums(email.Files)
