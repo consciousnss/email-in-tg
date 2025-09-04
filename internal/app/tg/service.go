@@ -85,9 +85,11 @@ func (t *telegramService) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case update := <-t.pool.Updates():
-			sub, err := t.subRepo.FindSubscription(ctx, update.GroupID, update.Email.MailFrom)
+			groupID := update.GroupID
+			mailFrom := update.Email.From
+			sub, err := t.subRepo.FindSubscription(ctx, groupID, mailFrom)
 			if errors.Is(err, repo.ErrSubscriptionNotFound) {
-				msg := fmt.Sprintf("subscription for email %v not found", update.Email.MailFrom)
+				msg := fmt.Sprintf("subscription for email %v not found", update.Email.From)
 				logger.Error(msg)
 				break
 			}
