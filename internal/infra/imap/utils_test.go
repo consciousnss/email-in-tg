@@ -13,12 +13,17 @@ import (
 const (
 	subject = "Test subject"
 	from    = "alice@example.com"
-	to      = "bob@example.com"
 )
 
-func buildTestHeader(subject, from, to string, date time.Time) mail.Header {
+var to = []string{"bob@example.com"}
+
+func buildTestHeader(subject, from string, to []string, date time.Time) mail.Header {
 	fromList := []*mail.Address{{Name: "", Address: from}}
-	toList := []*mail.Address{{Name: "", Address: to}}
+
+	toList := make([]*mail.Address, 0, len(to))
+	for _, addr := range to {
+		toList = append(toList, &mail.Address{Name: "", Address: addr})
+	}
 
 	var h mail.Header
 	h.SetSubject(subject)
@@ -40,8 +45,8 @@ func TestParseHeader_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, subject, email.Subject)
-	assert.Equal(t, from, email.MailFrom)
-	assert.Equal(t, to, email.MailTo)
+	assert.Equal(t, from, email.From)
+	assert.Equal(t, to, email.To)
 }
 
 func TestParseHeader_MissingSubject(t *testing.T) {
@@ -72,7 +77,7 @@ func TestParseHeader_MissingFrom(t *testing.T) {
 func TestParseHeader_MissingTo(t *testing.T) {
 	date := time.Date(2025, 4, 10, 15, 4, 5, 0, time.UTC)
 
-	header := buildTestHeader(subject, from, "", date)
+	header := buildTestHeader(subject, from, []string{}, date)
 
 	email := &models.Email{}
 
