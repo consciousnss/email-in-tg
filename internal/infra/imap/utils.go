@@ -70,6 +70,7 @@ func getFrom(header mail.Header, email *models.Email) error {
 
 	if len(from) == 1 {
 		email.From = from[0].Address
+		return nil
 	}
 
 	if len(from) > 1 {
