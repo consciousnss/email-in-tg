@@ -2,9 +2,11 @@ package tg
 
 import (
 	"bytes"
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 	"io"
 	"testing"
+	"text/template"
+
+	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
 
 	"github.com/stretchr/testify/assert"
 	tele "gopkg.in/telebot.v4"
@@ -57,35 +59,35 @@ func TestSplitFilesToAlbums(t *testing.T) {
 	}
 }
 
-//func TestRenderHTMLTemplate_EmailTemplate(t *testing.T) {
-//	email := &models.Email{
-//		From:    "alice@example.com",
-//		To:      []string{"bob@example.com"},
-//		Date:    "2025-04-10",
-//		Subject: "Hello!",
-//		Text:    "This is a test email.",
-//	}
-//
-//	output, err := renderHTMLTemplate(emailTmpl, email)
-//	assert.NoError(t, err)
-//	assert.Contains(t, output, "alice@example.com")
-//	assert.Contains(t, output, "Hello!")
-//	assert.Contains(t, output, "This is a test email.")
-//	assert.Contains(t, output, "✉️ <b>Новое письмо</b> ✉️")
-//}
-//
-//func TestRenderHTMLTemplate_HelpTemplate(t *testing.T) {
-//	output, err := renderHTMLTemplate(helpTmpl, "support@example.com")
-//	assert.NoError(t, err)
-//	assert.Contains(t, output, "<b>/start 'email' 'password'</b>")
-//	assert.Contains(t, output, "<i>support:</i> support@example.com.")
-//}
-//
-//func TestRenderHTMLTemplate_InvalidTemplate(t *testing.T) {
-//	invalidTmpl := template.Must(template.New("bad").Parse("{{.NonexistentField}}"))
-//
-//	output, err := renderHTMLTemplate(invalidTmpl, "just a string")
-//
-//	assert.Error(t, err)
-//	assert.Empty(t, output)
-//}
+func TestRenderHTMLTemplate_EmailTemplate(t *testing.T) {
+	email := &models.Email{
+		From:    "alice@example.com",
+		To:      []string{"bob@example.com"},
+		Date:    "2025-04-10",
+		Subject: "Hello!",
+		Text:    "This is a test email.",
+	}
+
+	output, err := renderHTMLTemplate(emailTmpl, email)
+	assert.NoError(t, err)
+	assert.Contains(t, output, "alice@example.com")
+	assert.Contains(t, output, "Hello!")
+	assert.Contains(t, output, "This is a test email.")
+	assert.Contains(t, output, "✉️ <b>Новое письмо</b> ✉️")
+}
+
+func TestRenderHTMLTemplate_HelpTemplate(t *testing.T) {
+	output, err := renderHTMLTemplate(helpTmpl, "support@example.com")
+	assert.NoError(t, err)
+	assert.Contains(t, output, "<b>/start 'email' 'password'</b>")
+	assert.Contains(t, output, "<i>support:</i> support@example.com.")
+}
+
+func TestRenderHTMLTemplate_InvalidTemplate(t *testing.T) {
+	invalidTmpl := template.Must(template.New("bad").Parse("{{.NonexistentField}}"))
+
+	output, err := renderHTMLTemplate(invalidTmpl, "just a string")
+
+	assert.Error(t, err)
+	assert.Empty(t, output)
+}

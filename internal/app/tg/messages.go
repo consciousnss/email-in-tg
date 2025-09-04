@@ -21,8 +21,8 @@ const loginTemplate = `<b>Отправь команду /start в следующ
 `
 
 const emailTemplate = `✉️ <b>Новое письмо</b> ✉️
-<b>От:</b> {{.MailFrom}}
-<b>Кому:</b> {{.MailTo}}
+<b>От:</b> {{.From}}
+<b>Кому:</b> {{.To}}
 <b>Тема:</b> {{.Subject}}
 <b>Дата:</b> {{.Date}}
 
