@@ -30,12 +30,12 @@ func SetupOTelSDK(
 	// The errors from the calls are joined.
 	// Each registered cleanup will be invoked once.
 	shutdown := func(ctx context.Context) error {
-		var e error
+		var err error
 		for _, fn := range shutdownFuncs {
-			e = errors.Join(err, fn(ctx))
+			err = errors.Join(err, fn(ctx))
 		}
 		shutdownFuncs = nil
-		return e
+		return err
 	}
 
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
@@ -89,7 +89,7 @@ func initConn(collectorEndpoint string) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}
 
-	return conn, err
+	return conn, nil
 }
 
 // Initializes an OTLP exporter, and configures the corresponding meter provider.
@@ -131,8 +131,6 @@ func newLoggerProvider(
 		sdklog.WithProcessor(processor),
 		sdklog.WithResource(res),
 	)
-
-	global.SetLoggerProvider(loggerProvider)
 
 	return loggerProvider, nil
 }
