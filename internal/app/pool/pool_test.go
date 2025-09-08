@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/mail"
+	"github.com/consciousnss/email-in-tg/internal/domain/mail"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 
 	"github.com/stretchr/testify/assert"
 )

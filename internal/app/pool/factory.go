@@ -1,9 +1,9 @@
 package pool
 
 import (
-	"github.com/un1uckyyy/email-in-tg/internal/domain/mail"
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
-	"github.com/un1uckyyy/email-in-tg/internal/infra/imap"
+	"github.com/consciousnss/email-in-tg/internal/domain/mail"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/infra/imap"
 )
 
 type MailboxWatcherFactory interface {

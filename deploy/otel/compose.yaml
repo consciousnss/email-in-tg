@@ -1,0 +1,47 @@
+services:
+  collector:
+    image: "otel/opentelemetry-collector-contrib:0.120.0"
+    ports:
+      - 4317:4317
+      - 4318:4318
+      - 55679:55679
+    volumes:
+      - ./otel-config.yaml:/etc/otel/config.yaml
+    command:
+      - '--config=/etc/otel/config.yaml'
+    networks:
+      - otel
+      - internal
+
+  loki:
+    image: grafana/loki:main
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - internal
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prom-config.yaml:/etc/prometheus/prometheus.yaml
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+    ports:
+      - "9090:9090"
+    networks:
+      - internal
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    networks:
+      - internal
+
+networks:
+  otel:
+    external: true
+  internal:

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 
 	"github.com/emersion/go-message/mail"
 )

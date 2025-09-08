@@ -3,7 +3,7 @@ package mail
 import (
 	"context"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 )
 
 type MailboxWatcher interface {

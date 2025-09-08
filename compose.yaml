@@ -6,6 +6,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: 1234
+    networks:
+      - internal
 
   mongo-express:
     image: mongo-express
@@ -21,17 +23,28 @@ services:
       ME_CONFIG_MONGODB_PORT: 27017
     depends_on:
       - mongo
+    networks:
+      - internal
 
   app:
-    image: 'ghcr.io/un1uckyyy/email-in-tg:dev'
+    image: 'ghcr.io/consciousnss/email-in-tg:dev'
     environment:
       IMAP_POLL_INTERVAL: 10s
       TELEGRAM_TOKEN: $TELEGRAM_TOKEN
       TELEGRAM_SUPPORT: $TELEGRAM_SUPPORT
       MONGO_URI: mongodb://admin:1234@mongo:27017
       LOG_LEVEL: DEBUG
+      OTEL_URI: collector:4317
     depends_on:
       - mongo
+    networks:
+      - otel
+      - internal
 
 volumes:
   mongo-volume:
+
+networks:
+  otel:
+    external: true
+  internal:

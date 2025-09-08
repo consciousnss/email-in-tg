@@ -7,12 +7,12 @@ import (
 	"io"
 	"time"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 
+	mailboxwatcher "github.com/consciousnss/email-in-tg/internal/domain/mail"
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 	"github.com/emersion/go-message/mail"
-	mailboxwatcher "github.com/un1uckyyy/email-in-tg/internal/domain/mail"
 )
 
 type imapService struct {
@@ -46,8 +46,10 @@ func NewImapService(
 }
 
 func (i *imapService) connect() (*imapclient.Client, error) {
+	var opt imapclient.Options
+
 	provider := string(i.serviceData.Provider)
-	client, err := imapclient.DialTLS(provider, nil)
+	client, err := imapclient.DialTLS(provider, &opt)
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}

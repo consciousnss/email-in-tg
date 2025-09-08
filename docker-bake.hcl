@@ -6,6 +6,6 @@ target "image" {
   target     = "image"
   dockerfile = "Dockerfile"
   tags = [
-    "ghcr.io/un1uckyyy/email-in-tg:dev"
+    "ghcr.io/consciousnss/email-in-tg:dev"
   ]
 }
