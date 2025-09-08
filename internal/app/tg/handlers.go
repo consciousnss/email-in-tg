@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
-	"github.com/un1uckyyy/email-in-tg/internal/domain/repo"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/repo"
 
 	"github.com/go-playground/validator/v10"
 	tele "gopkg.in/telebot.v4"

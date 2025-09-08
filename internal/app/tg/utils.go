@@ -4,7 +4,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 
 	tele "gopkg.in/telebot.v4"
 

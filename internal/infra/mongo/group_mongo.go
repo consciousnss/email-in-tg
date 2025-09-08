@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
-	"github.com/un1uckyyy/email-in-tg/internal/domain/repo"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/repo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

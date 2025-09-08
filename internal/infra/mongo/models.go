@@ -1,7 +1,7 @@
 package mongo
 
 import (
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

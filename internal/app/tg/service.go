@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/un1uckyyy/email-in-tg/internal/domain/models"
-	"github.com/un1uckyyy/email-in-tg/internal/domain/repo"
+	"github.com/consciousnss/email-in-tg/internal/domain/models"
+	"github.com/consciousnss/email-in-tg/internal/domain/repo"
 
-	"github.com/un1uckyyy/email-in-tg/internal/app/pool"
+	"github.com/consciousnss/email-in-tg/internal/app/pool"
 	tele "gopkg.in/telebot.v4"
 )
 

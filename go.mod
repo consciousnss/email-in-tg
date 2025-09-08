@@ -1,4 +1,4 @@
-module github.com/un1uckyyy/email-in-tg
+module github.com/consciousnss/email-in-tg
 
 go 1.25.0
 
@@ -7,12 +7,13 @@ require (
 	github.com/emersion/go-message v0.18.2
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver v1.17.4
-	go.opentelemetry.io/otel v1.37.0
+	go.opentelemetry.io/contrib/bridges/otelslog v0.13.0
+	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.13.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.37.0
-	go.opentelemetry.io/otel/log v0.13.0
+	go.opentelemetry.io/otel/log v0.14.0
 	go.opentelemetry.io/otel/sdk v1.37.0
 	go.opentelemetry.io/otel/sdk/log v0.13.0
 	go.opentelemetry.io/otel/sdk/metric v1.37.0
@@ -43,8 +44,8 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel/metric v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/net v0.43.0 // indirect

@@ -8,17 +8,17 @@ import (
 	"os/signal"
 	"syscall"
 
-	mongoinfra "github.com/un1uckyyy/email-in-tg/internal/infra/mongo"
+	mongoinfra "github.com/consciousnss/email-in-tg/internal/infra/mongo"
 
-	"github.com/un1uckyyy/email-in-tg/internal/app/pool"
-	"github.com/un1uckyyy/email-in-tg/internal/app/tg"
+	"github.com/consciousnss/email-in-tg/internal/app/pool"
+	"github.com/consciousnss/email-in-tg/internal/app/tg"
 
-	"github.com/un1uckyyy/email-in-tg/pkg/otel"
-	"github.com/un1uckyyy/email-in-tg/pkg/slogger"
+	"github.com/consciousnss/email-in-tg/pkg/otel"
+	"github.com/consciousnss/email-in-tg/pkg/slogger"
 
-	"github.com/un1uckyyy/email-in-tg/pkg/mongo"
+	"github.com/consciousnss/email-in-tg/pkg/mongo"
 
-	"github.com/un1uckyyy/email-in-tg/internal/config"
+	"github.com/consciousnss/email-in-tg/internal/config"
 )
 
 const appName = "email-in-tg"
