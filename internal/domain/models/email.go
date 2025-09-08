@@ -17,12 +17,12 @@ type Update struct {
 }
 
 type Email struct {
-	MailFrom string
-	MailTo   string
-	Date     string
-	Subject  string
-	Text     string
-	Files    []*File
+	From    string
+	To      []string
+	Date    string
+	Subject string
+	Text    string
+	Files   []*File
 }
 
 type File struct {
