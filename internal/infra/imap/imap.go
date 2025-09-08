@@ -46,8 +46,10 @@ func NewImapService(
 }
 
 func (i *imapService) connect() (*imapclient.Client, error) {
+	var opt imapclient.Options
+
 	provider := string(i.serviceData.Provider)
-	client, err := imapclient.DialTLS(provider, nil)
+	client, err := imapclient.DialTLS(provider, &opt)
 	if err != nil {
 		return nil, fmt.Errorf("dial TLS error: %w", err)
 	}
