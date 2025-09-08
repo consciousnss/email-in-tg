@@ -14,11 +14,12 @@ processors:
 # Exporters
 exporters:
   otlphttp/logs:
-    endpoint: "http://loki/otlp"
+    endpoint: "http://loki:3100/otlp"
     tls:
       insecure: true
   prometheus:
     endpoint: "0.0.0.0:9464"
+  debug: {}
 
 # Pipelines
 service:
@@ -26,8 +27,8 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/logs]
+      exporters: [otlphttp/logs, debug]
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [prometheus]
+      exporters: [prometheus, debug]

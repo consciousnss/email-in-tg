@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
 var logger *slog.Logger
@@ -11,9 +13,15 @@ var logger *slog.Logger
 func init() {
 	logLevel := parseLogLevel(os.Getenv("LOG_LEVEL"))
 
-	handler := slog.NewJSONHandler(
+	var handler slog.Handler
+	handler = slog.NewJSONHandler(
 		os.Stdout, &slog.HandlerOptions{Level: logLevel},
 	)
+
+	otelEnabled := os.Getenv("OTEL_URI")
+	if otelEnabled != "" {
+		handler = otelslog.NewHandler("github.com/consciousnss/email-in-tg")
+	}
 
 	logger = slog.New(handler)
 }
