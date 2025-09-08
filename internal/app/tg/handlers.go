@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/consciousnss/email-in-tg/internal/domain/models"
 	"github.com/consciousnss/email-in-tg/internal/domain/repo"
@@ -19,6 +20,8 @@ const (
 	mailRuLoginURL = "https://help.mail.ru/mail/mailer/password/"
 	yandexLoginURL = "https://yandex.com/support/id/en/authorization/app-passwords#create"
 )
+
+const defaultPollInterval = 30 * time.Second
 
 func (t *telegramService) help(c tele.Context) error {
 	text, err := renderHTMLTemplate(helpTmpl, os.Getenv("TELEGRAM_SUPPORT"))
@@ -110,14 +113,16 @@ func (t *telegramService) registerGroup(c tele.Context) error {
 	email, password := args[0], args[1]
 
 	group := models.Group{
-		ID:    chat.ID,
-		Type:  string(chat.Type),
-		Title: chat.Title,
+		ID:       chat.ID,
+		Type:     string(chat.Type),
+		Title:    chat.Title,
+		Provider: models.MailRuProvider,
 		Login: &models.EmailLogin{
 			Email:    email,
 			Password: password,
 		},
-		IsActive: true,
+		PollInterval: defaultPollInterval,
+		IsActive:     true,
 	}
 
 	err := validate.Struct(group)

@@ -1,6 +1,8 @@
 package mongo
 
 import (
+	"time"
+
 	"github.com/consciousnss/email-in-tg/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -10,6 +12,9 @@ type group struct {
 	Type string `bson:"type"`
 
 	Title string `bson:"title"`
+
+	Provider     string        `bson:"provider"`
+	PollInterval time.Duration `bson:"poll_interval"`
 
 	Login *emailLogin `bson:"login"`
 
@@ -33,21 +38,25 @@ type subscription struct {
 
 func toMongoGroup(g *models.Group) *group {
 	return &group{
-		ID:       g.ID,
-		Type:     g.Type,
-		Title:    g.Title,
-		Login:    toMongoEmailLogin(g.Login),
-		IsActive: g.IsActive,
+		ID:           g.ID,
+		Type:         g.Type,
+		Title:        g.Title,
+		Provider:     string(g.Provider),
+		PollInterval: g.PollInterval,
+		Login:        toMongoEmailLogin(g.Login),
+		IsActive:     g.IsActive,
 	}
 }
 
 func fromMongoGroup(g *group) *models.Group {
 	return &models.Group{
-		ID:       g.ID,
-		Type:     g.Type,
-		Title:    g.Title,
-		Login:    fromMongoEmailLogin(g.Login),
-		IsActive: g.IsActive,
+		ID:           g.ID,
+		Type:         g.Type,
+		Title:        g.Title,
+		Provider:     models.MailProvider(g.Provider),
+		PollInterval: g.PollInterval,
+		Login:        fromMongoEmailLogin(g.Login),
+		IsActive:     g.IsActive,
 	}
 }
 
