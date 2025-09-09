@@ -113,12 +113,20 @@ func (i *imapService) run(ctx context.Context) {
 			}
 
 			for uidNext < uidNextNext {
-				email, err := i.fetchOne(uidNext)
+				msg, err := i.fetchOne(uidNext)
 				if err != nil {
 					msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
 					logger.Error(msg)
-					break
+					continue
 				}
+
+				email, err := f(msg)
+				if err != nil {
+					msg := fmt.Sprint(err) // TODO add err handling
+					logger.Error(msg)
+					continue
+				}
+
 				i.updates <- &models.Update{
 					Email:   email,
 					GroupID: i.serviceData.GroupID,
@@ -163,9 +171,7 @@ func (i *imapService) Status() (imap.UID, error) {
 	return data.UIDNext, nil
 }
 
-func (i *imapService) fetchOne(uid imap.UID) (*models.Email, error) {
-	email := &models.Email{}
-
+func (i *imapService) fetchOne(uid imap.UID) (*imapclient.FetchMessageData, error) {
 	seqSet := imap.UIDSetNum(uid)
 
 	bodySection := &imap.FetchItemBodySection{}
@@ -182,6 +188,61 @@ func (i *imapService) fetchOne(uid imap.UID) (*models.Email, error) {
 		return nil, fmt.Errorf("got nil fetch result")
 	}
 
+	return msg, nil
+}
+
+func x(reader io.Reader, email *models.Email) error {
+
+	mr, err := mail.CreateReader(reader)
+	if err != nil {
+		return fmt.Errorf("mail parse err: %w", err)
+	}
+
+	err = parseHeader(mr.Header, email)
+	if err != nil {
+		return fmt.Errorf("header parse err: %w", err)
+	}
+	logger.Debug(fmt.Sprintf("got %+v", email))
+
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("mail reader error: %w", err)
+		}
+
+		switch h := p.Header.(type) {
+		case *mail.InlineHeader:
+			b, err := io.ReadAll(p.Body)
+			if err != nil {
+				return fmt.Errorf("read text error %w", err)
+			}
+			email.Text = string(b)
+		case *mail.AttachmentHeader:
+			filename, err := h.Filename()
+			if err != nil {
+				return fmt.Errorf("get filename error %w", err)
+			}
+
+			b, err := io.ReadAll(p.Body)
+			if err != nil {
+				return fmt.Errorf("read attachment error: %w", err)
+			}
+
+			email.Files = append(email.Files, &models.File{
+				Filename: filename,
+				Data:     bytes.NewReader(b),
+			})
+		}
+	}
+
+	return nil
+}
+
+func f(msg *imapclient.FetchMessageData) (*models.Email, error) {
+	email := &models.Email{}
+
 	for {
 		item := msg.Next()
 		if item == nil {
@@ -193,48 +254,9 @@ func (i *imapService) fetchOne(uid imap.UID) (*models.Email, error) {
 			continue
 		}
 
-		mr, err := mail.CreateReader(dataBodySection.Literal)
+		err := x(dataBodySection.Literal, email)
 		if err != nil {
-			return nil, fmt.Errorf("mail parse err: %w", err)
-		}
-
-		err = parseHeader(mr.Header, email)
-		if err != nil {
-			return nil, fmt.Errorf("header parse err: %w", err)
-		}
-		logger.Debug(fmt.Sprintf("got %+v", email))
-
-		for {
-			p, err := mr.NextPart()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return nil, fmt.Errorf("mail reader error: %w", err)
-			}
-
-			switch h := p.Header.(type) {
-			case *mail.InlineHeader:
-				b, err := io.ReadAll(p.Body)
-				if err != nil {
-					return nil, fmt.Errorf("read text error %w", err)
-				}
-				email.Text = string(b)
-			case *mail.AttachmentHeader:
-				filename, err := h.Filename()
-				if err != nil {
-					return nil, fmt.Errorf("get filename error %w", err)
-				}
-
-				b, err := io.ReadAll(p.Body)
-				if err != nil {
-					return nil, fmt.Errorf("read attachment error: %w", err)
-				}
-
-				email.Files = append(email.Files, &models.File{
-					Filename: filename,
-					Data:     bytes.NewReader(b),
-				})
-			}
+			// TODO how to hadle?
 		}
 	}
 
