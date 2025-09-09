@@ -102,7 +102,6 @@ func (i *imapService) run(ctx context.Context) {
 				break
 			}
 
-			// TODO add fetching all mails from changed delta.
 			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNext, uidNextNext)
 			logger.Debug(msg)
 
@@ -113,17 +112,20 @@ func (i *imapService) run(ctx context.Context) {
 				break
 			}
 
-			email, err := i.fetchOne(uidNext)
-			if err != nil {
-				msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
-				logger.Error(msg)
-				break
+			for uidNext < uidNextNext {
+				email, err := i.fetchOne(uidNext)
+				if err != nil {
+					msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
+					logger.Error(msg)
+					break
+				}
+				i.updates <- &models.Update{
+					Email:   email,
+					GroupID: i.serviceData.GroupID,
+				}
+
+				uidNext++
 			}
-			i.updates <- &models.Update{
-				Email:   email,
-				GroupID: i.serviceData.GroupID,
-			}
-			uidNext = uidNextNext
 		}
 	}
 }
