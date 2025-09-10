@@ -75,13 +75,13 @@ func (i *imapService) run(ctx context.Context) {
 	ticker := time.NewTicker(i.serviceData.PollInterval)
 	defer ticker.Stop()
 
-	uidNext, err := i.Status()
+	uidNextCurrent, err := i.Status()
 	if err != nil {
 		msg := fmt.Sprintf("imap status error: %s", err)
 		logger.Error(msg)
 	}
 
-	msg := fmt.Sprintf("got UIDNext: %d", uidNext)
+	msg := fmt.Sprintf("got UIDNext: %d", uidNextCurrent)
 	logger.Debug(msg)
 
 	for {
@@ -91,51 +91,67 @@ func (i *imapService) run(ctx context.Context) {
 		case <-i.done:
 			return
 		case <-ticker.C:
-			uidNextNext, err := i.Status()
+			err := i.poll(ctx, uidNextCurrent)
 			if err != nil {
-				msg := fmt.Sprintf("imap status error: %s", err)
+				msg := fmt.Sprintf("imap poll error: %s", err)
 				logger.Error(msg)
-				break
-			}
-
-			if uidNextNext == uidNext {
-				break
-			}
-
-			msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNext, uidNextNext)
-			logger.Debug(msg)
-
-			err = i.selectMailbox(inbox)
-			if err != nil {
-				msg := fmt.Sprintf("imap select error: %s", err)
-				logger.Error(msg)
-				break
-			}
-
-			for uidNext < uidNextNext {
-				msg, err := i.fetchOne(uidNext)
-				if err != nil {
-					msg := fmt.Sprintf("fetch uidNextNext %d error: %s", uidNext, err)
-					logger.Error(msg)
-					continue
-				}
-
-				email, err := f(msg)
-				if err != nil {
-					msg := fmt.Sprint(err) // TODO add err handling
-					logger.Error(msg)
-					continue
-				}
-
-				i.updates <- &models.Update{
-					Email:   email,
-					GroupID: i.serviceData.GroupID,
-				}
-
-				uidNext++
 			}
 		}
 	}
+}
+
+func (i *imapService) poll(ctx context.Context, uidNextCurrent imap.UID) error {
+	uidNext, err := i.Status()
+	if err != nil {
+		msg := fmt.Sprintf("imap status error: %s", err)
+		logger.Error(msg)
+		return err
+	}
+
+	if uidNext == uidNextCurrent {
+		return nil
+	}
+
+	msg := fmt.Sprintf("UIDNext changed from: %d, to: %d", uidNextCurrent, uidNext)
+	logger.Debug(msg)
+
+	err = i.selectMailbox(inbox)
+	if err != nil {
+		msg := fmt.Sprintf("imap select error: %s", err)
+		logger.Error(msg)
+		return err
+	}
+
+	for uid := uidNextCurrent; uid < uidNext; uid++ {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			imapMsg, err := i.fetchOne(uidNextCurrent)
+			if err != nil {
+				msg := fmt.Sprintf("fetch uidNext %d error: %s", uidNextCurrent, err)
+				logger.Error(msg)
+				continue
+			}
+
+			email := &models.Email{}
+			err = processOne(imapMsg, email)
+			if err != nil {
+				msg := fmt.Sprint(err) // TODO add err handling
+				logger.Error(msg)
+				continue
+			}
+
+			i.updates <- &models.Update{
+				Email:   email,
+				GroupID: i.serviceData.GroupID,
+			}
+
+			uidNextCurrent++
+		}
+	}
+
+	return nil
 }
 
 func (i *imapService) Login(username string, password string) error {
@@ -191,8 +207,29 @@ func (i *imapService) fetchOne(uid imap.UID) (*imapclient.FetchMessageData, erro
 	return msg, nil
 }
 
-func x(reader io.Reader, email *models.Email) error {
+func processOne(msg *imapclient.FetchMessageData, email *models.Email) error {
+	for {
+		item := msg.Next()
+		if item == nil {
+			break
+		}
 
+		dataBodySection, ok := item.(imapclient.FetchItemDataBodySection)
+		if !ok {
+			continue
+		}
+
+		err := parseOne(dataBodySection.Literal, email)
+		if err != nil {
+			msg := fmt.Sprintf("failed to parse email body section: %v", err)
+			logger.Error(msg)
+		}
+	}
+
+	return nil
+}
+
+func parseOne(reader io.Reader, email *models.Email) error {
 	mr, err := mail.CreateReader(reader)
 	if err != nil {
 		return fmt.Errorf("mail parse err: %w", err)
@@ -238,27 +275,4 @@ func x(reader io.Reader, email *models.Email) error {
 	}
 
 	return nil
-}
-
-func f(msg *imapclient.FetchMessageData) (*models.Email, error) {
-	email := &models.Email{}
-
-	for {
-		item := msg.Next()
-		if item == nil {
-			break
-		}
-
-		dataBodySection, ok := item.(imapclient.FetchItemDataBodySection)
-		if !ok {
-			continue
-		}
-
-		err := x(dataBodySection.Literal, email)
-		if err != nil {
-			// TODO how to hadle?
-		}
-	}
-
-	return email, nil
 }

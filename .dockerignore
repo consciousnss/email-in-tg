@@ -3,3 +3,5 @@
 .env
 compose.yaml
 docker-bake.hcl
+
+testdata/*
