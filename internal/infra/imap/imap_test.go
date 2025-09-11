@@ -34,7 +34,7 @@ func TestParseOne_WithRealEmlAttachment(t *testing.T) {
 	assert.Equal(t, "2 фото и текст", email.Subject)
 	assert.Equal(t, "mohamedlowskill@mail.ru", email.From)
 	assert.Equal(t, []string{"redirect_test@mail.ru"}, email.To)
-	assert.Equal(t, "Wed, 10 Sep 2025 23:26:12 MSK", email.Date)
+	assert.Equal(t, "Wed, 10 Sep 2025 23:26:12 +0300", email.Date)
 
 	text, err := os.ReadFile("./testdata/email_text.html")
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ Hello world
 	assert.Equal(t, "a@a.com", email.From)
 	assert.Equal(t, []string{"b@b.com"}, email.To)
 	assert.Equal(t, "hi", email.Subject)
-	assert.Equal(t, "Mon, 07 Apr 2025 23:43:15 MSK", email.Date)
+	assert.Equal(t, "Mon, 07 Apr 2025 23:43:15 +0300", email.Date)
 	assert.Len(t, email.Files, 0)
 }
 
@@ -97,6 +97,6 @@ Hello world
 	assert.Equal(t, "sender@send.com", email.From)
 	assert.Equal(t, []string{"b@b.com"}, email.To)
 	assert.Equal(t, "hi", email.Subject)
-	assert.Equal(t, "Mon, 07 Apr 2025 23:43:15 MSK", email.Date)
+	assert.Equal(t, "Mon, 07 Apr 2025 23:43:15 +0300", email.Date)
 	assert.Len(t, email.Files, 0)
 }

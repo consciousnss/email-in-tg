@@ -54,7 +54,7 @@ func getDate(header mail.Header, email *models.Email) error {
 	if err != nil {
 		return fmt.Errorf("get date error: %w", err)
 	}
-	email.Date = date.Format(time.RFC1123)
+	email.Date = date.Format(time.RFC1123Z)
 	return nil
 }
 
