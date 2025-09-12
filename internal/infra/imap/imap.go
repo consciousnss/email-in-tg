@@ -96,6 +96,12 @@ func (i *imapService) run(ctx context.Context) {
 				msg := fmt.Sprintf("imap poll error: %s", err)
 				logger.Error(msg)
 			}
+
+			uidNextCurrent, err = i.Status()
+			if err != nil {
+				msg := fmt.Sprintf("imap status error: %s", err)
+				logger.Error(msg)
+			}
 		}
 	}
 }
@@ -127,7 +133,7 @@ func (i *imapService) poll(ctx context.Context, uidNextCurrent imap.UID) error {
 		case <-ctx.Done():
 			return nil
 		default:
-			imapMsg, err := i.fetchOne(uidNextCurrent)
+			imapMsg, err := i.fetchOne(uid)
 			if err != nil {
 				msg := fmt.Sprintf("fetch uidNext %d error: %s", uidNextCurrent, err)
 				logger.Error(msg)
