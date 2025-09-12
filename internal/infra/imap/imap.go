@@ -135,7 +135,7 @@ func (i *imapService) poll(ctx context.Context, uidNextCurrent imap.UID) error {
 		default:
 			imapMsg, err := i.fetchOne(uid)
 			if err != nil {
-				msg := fmt.Sprintf("fetch uidNext %d error: %s", uidNextCurrent, err)
+				msg := fmt.Sprintf("fetch uid %d error: %s", uid, err)
 				logger.Error(msg)
 				continue
 			}
@@ -152,8 +152,6 @@ func (i *imapService) poll(ctx context.Context, uidNextCurrent imap.UID) error {
 				Email:   email,
 				GroupID: i.serviceData.GroupID,
 			}
-
-			uidNextCurrent++
 		}
 	}
 

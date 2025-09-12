@@ -65,9 +65,8 @@ Content-Type: text/plain; charset=utf-8
 Hello world
 `
 	email := &models.Email{}
-	if err := parseOne(strings.NewReader(raw), email); err != nil {
-		t.Fatalf("parseOne вернул ошибку для простого письма: %v", err)
-	}
+	err := parseOne(strings.NewReader(raw), email)
+	assert.NoError(t, err)
 
 	assert.Contains(t, email.Text, "Hello world")
 	assert.Equal(t, "a@a.com", email.From)
@@ -89,9 +88,8 @@ Content-Type: text/plain; charset=utf-8
 Hello world
 `
 	email := &models.Email{}
-	if err := parseOne(strings.NewReader(raw), email); err != nil {
-		t.Fatalf("parseOne вернул ошибку для простого письма: %v", err)
-	}
+	err := parseOne(strings.NewReader(raw), email)
+	assert.NoError(t, err)
 
 	assert.Contains(t, email.Text, "Hello world")
 	assert.Equal(t, "sender@send.com", email.From)
