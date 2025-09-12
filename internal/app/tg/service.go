@@ -108,6 +108,9 @@ func (t *telegramService) run(ctx context.Context) {
 				logger.Error(msg)
 				break
 			}
+
+			msg = fmt.Sprintf("sent subscription: %+v", sub)
+			logger.Debug(msg)
 		}
 	}
 }
